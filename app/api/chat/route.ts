@@ -15,7 +15,12 @@ export async function POST(req: Request) {
     return new Response('Unauthorized', { status: 401 });
   }
 
-  const body = (await req.json()) as { messages?: UIMessage[]; modelId?: string };
+  let body: { messages?: UIMessage[]; modelId?: string };
+  try {
+    body = (await req.json()) as { messages?: UIMessage[]; modelId?: string };
+  } catch {
+    return new Response('Invalid JSON body', { status: 400 });
+  }
   const { messages, modelId } = body;
 
   if (!modelId || !isModelAvailable(modelId)) {

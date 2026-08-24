@@ -116,4 +116,14 @@ describe('POST /api/chat', () => {
     const text = await response.text();
     expect(text).toContain('Hello');
   });
+
+  it('returns 400 for a malformed JSON body', async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: 'user-1' } } as never);
+
+    const response = await POST(
+      new Request('http://localhost/api/chat', { method: 'POST', body: 'not valid json' }),
+    );
+
+    expect(response.status).toBe(400);
+  });
 });

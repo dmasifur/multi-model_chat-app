@@ -146,7 +146,12 @@ describe('ChatPage', () => {
 
   it('creates a conversation on first send and saves the user message', async () => {
     const sendMessage = vi.fn();
-    vi.mocked(useChat).mockReturnValue({ messages: [], sendMessage, status: 'ready', stop: vi.fn() } as never);
+    vi.mocked(useChat).mockReturnValue({
+      messages: [],
+      sendMessage,
+      status: 'ready',
+      stop: vi.fn(),
+    } as never);
 
     const fetchMock = vi
       .fn()
@@ -155,7 +160,9 @@ describe('ChatPage', () => {
     vi.stubGlobal('fetch', fetchMock);
 
     render(<ChatPage availableModels={models} />);
-    fireEvent.change(screen.getByPlaceholderText(/type a message/i), { target: { value: 'hello world' } });
+    fireEvent.change(screen.getByPlaceholderText(/type a message/i), {
+      target: { value: 'hello world' },
+    });
     fireEvent.click(screen.getByRole('button', { name: /send/i }));
 
     await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
@@ -179,13 +186,20 @@ describe('ChatPage', () => {
 
   it('reuses the existing conversation id on subsequent sends instead of creating a new one', async () => {
     const sendMessage = vi.fn();
-    vi.mocked(useChat).mockReturnValue({ messages: [], sendMessage, status: 'ready', stop: vi.fn() } as never);
+    vi.mocked(useChat).mockReturnValue({
+      messages: [],
+      sendMessage,
+      status: 'ready',
+      stop: vi.fn(),
+    } as never);
 
     const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 201 }));
     vi.stubGlobal('fetch', fetchMock);
 
     render(<ChatPage availableModels={models} conversationId="conv-existing" />);
-    fireEvent.change(screen.getByPlaceholderText(/type a message/i), { target: { value: 'second turn' } });
+    fireEvent.change(screen.getByPlaceholderText(/type a message/i), {
+      target: { value: 'second turn' },
+    });
     fireEvent.click(screen.getByRole('button', { name: /send/i }));
 
     await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
@@ -198,14 +212,22 @@ describe('ChatPage', () => {
   });
 
   it('seeds selected models and column history from initialColumns', () => {
-    vi.mocked(useChat).mockReturnValue({ messages: [], sendMessage: vi.fn(), status: 'ready', stop: vi.fn() } as never);
+    vi.mocked(useChat).mockReturnValue({
+      messages: [],
+      sendMessage: vi.fn(),
+      status: 'ready',
+      stop: vi.fn(),
+    } as never);
 
     render(
       <ChatPage
         availableModels={models}
         conversationId="conv-1"
         initialColumns={[
-          { modelId: models[1].id, messages: [{ role: 'user', modelId: null, content: 'Q', createdAt: new Date() }] },
+          {
+            modelId: models[1].id,
+            messages: [{ role: 'user', modelId: null, content: 'Q', createdAt: new Date() }],
+          },
         ]}
       />,
     );

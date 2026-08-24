@@ -27,7 +27,7 @@ describe('conversation persistence (live Postgres)', () => {
     expect(conversation.title).toBe('My first chat');
   });
 
-  it('lists a user\'s conversations, newest first', async () => {
+  it("lists a user's conversations, newest first", async () => {
     const user = await makeTestUser();
     const first = await createConversation(user.id, 'First');
     const second = await createConversation(user.id, 'Second');
@@ -98,7 +98,9 @@ describe('groupMessagesByModel (pure)', () => {
 
   it('returns an empty array when there are no assistant messages yet', () => {
     expect(
-      groupMessagesByModel([{ role: 'user', modelId: null, content: 'Q1', createdAt: new Date(0) }]),
+      groupMessagesByModel([
+        { role: 'user', modelId: null, content: 'Q1', createdAt: new Date(0) },
+      ]),
     ).toEqual([]);
   });
 });

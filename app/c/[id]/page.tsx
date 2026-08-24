@@ -5,11 +5,7 @@ import { getConversationWithMessages, groupMessagesByModel } from '@/lib/convers
 import { ChatPage } from '@/components/chat-page';
 import { AppShell } from '@/components/app-shell';
 
-export default async function ConversationPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+export default async function ConversationPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const session = await auth();
   if (!session?.user?.id) {

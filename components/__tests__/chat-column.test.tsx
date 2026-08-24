@@ -79,7 +79,12 @@ describe('ChatColumn', () => {
 
   it('exposes sendMessage via ref that calls the underlying sendMessage with modelId', () => {
     const sendMessage = vi.fn();
-    vi.mocked(useChat).mockReturnValue({ messages: [], sendMessage, status: 'ready', stop: vi.fn() } as never);
+    vi.mocked(useChat).mockReturnValue({
+      messages: [],
+      sendMessage,
+      status: 'ready',
+      stop: vi.fn(),
+    } as never);
 
     const ref = createRef<ChatColumnHandle>();
     render(<ChatColumn model={model} ref={ref} />);
@@ -129,7 +134,9 @@ describe('ChatColumn', () => {
     }) as never);
 
     render(<ChatColumn model={model} ref={null} />);
-    capturedOnFinish?.({ message: { id: 'm1', role: 'assistant', parts: [{ type: 'text', text: 'x' }] } });
+    capturedOnFinish?.({
+      message: { id: 'm1', role: 'assistant', parts: [{ type: 'text', text: 'x' }] },
+    });
 
     expect(fetchMock).not.toHaveBeenCalled();
     vi.unstubAllGlobals();

@@ -21,11 +21,15 @@ export function ChatColumn({
 }) {
   const conversationIdRef = useRef<string | null>(null);
 
-  const { messages, sendMessage, status, stop } = useChat({
+  const { messages, sendMessage, status, stop, error, regenerate } = useChat({
     messages: initialMessages,
     onFinish: ({ message }) => {
       const conversationId = conversationIdRef.current;
       if (!conversationId) {
+        return;
+      }
+      const content = getMessageText(message as UIMessage);
+      if (!content) {
         return;
       }
       fetch(`/api/conversations/${conversationId}/messages`, {
@@ -34,7 +38,7 @@ export function ChatColumn({
         body: JSON.stringify({
           role: 'assistant',
           modelId: model.id,
-          content: getMessageText(message as UIMessage),
+          content,
         }),
       });
     },
@@ -60,6 +64,14 @@ export function ChatColumn({
           </div>
         ))}
       </div>
+      {error && (
+        <div className="rounded border border-red-300 bg-red-50 p-2 text-sm text-red-700">
+          <p>Something went wrong with this model.</p>
+          <button type="button" onClick={() => regenerate()} className="mt-1 underline">
+            Retry
+          </button>
+        </div>
+      )}
       {(status === 'submitted' || status === 'streaming') && (
         <button
           type="button"

@@ -29,6 +29,8 @@ describe('ChatColumn', () => {
       sendMessage: vi.fn(),
       status: 'ready',
       stop: vi.fn(),
+      error: undefined,
+      regenerate: vi.fn(),
     } as never);
 
     render(<ChatColumn model={model} ref={null} />);
@@ -42,6 +44,8 @@ describe('ChatColumn', () => {
       sendMessage: vi.fn(),
       status: 'ready',
       stop: vi.fn(),
+      error: undefined,
+      regenerate: vi.fn(),
     } as never);
 
     render(<ChatColumn model={model} ref={null} />);
@@ -55,6 +59,8 @@ describe('ChatColumn', () => {
       sendMessage: vi.fn(),
       status: 'ready',
       stop: vi.fn(),
+      error: undefined,
+      regenerate: vi.fn(),
     } as never);
 
     render(<ChatColumn model={model} ref={null} />);
@@ -69,6 +75,8 @@ describe('ChatColumn', () => {
       sendMessage: vi.fn(),
       status: 'streaming',
       stop,
+      error: undefined,
+      regenerate: vi.fn(),
     } as never);
 
     render(<ChatColumn model={model} ref={null} />);
@@ -84,6 +92,8 @@ describe('ChatColumn', () => {
       sendMessage,
       status: 'ready',
       stop: vi.fn(),
+      error: undefined,
+      regenerate: vi.fn(),
     } as never);
 
     const ref = createRef<ChatColumnHandle>();
@@ -101,7 +111,14 @@ describe('ChatColumn', () => {
     let capturedOnFinish: ((args: { message: unknown }) => void) | undefined;
     vi.mocked(useChat).mockImplementation(((options?: { onFinish?: typeof capturedOnFinish }) => {
       capturedOnFinish = options?.onFinish;
-      return { messages: [], sendMessage: vi.fn(), status: 'ready', stop: vi.fn() };
+      return {
+        messages: [],
+        sendMessage: vi.fn(),
+        status: 'ready',
+        stop: vi.fn(),
+        error: undefined,
+        regenerate: vi.fn(),
+      };
     }) as never);
 
     const ref = createRef<ChatColumnHandle>();
@@ -130,13 +147,80 @@ describe('ChatColumn', () => {
     let capturedOnFinish: ((args: { message: unknown }) => void) | undefined;
     vi.mocked(useChat).mockImplementation(((options?: { onFinish?: typeof capturedOnFinish }) => {
       capturedOnFinish = options?.onFinish;
-      return { messages: [], sendMessage: vi.fn(), status: 'ready', stop: vi.fn() };
+      return {
+        messages: [],
+        sendMessage: vi.fn(),
+        status: 'ready',
+        stop: vi.fn(),
+        error: undefined,
+        regenerate: vi.fn(),
+      };
     }) as never);
 
     render(<ChatColumn model={model} ref={null} />);
     capturedOnFinish?.({
       message: { id: 'm1', role: 'assistant', parts: [{ type: 'text', text: 'x' }] },
     });
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
+
+  it('shows an error message and Retry button when the stream errors', () => {
+    const regenerate = vi.fn();
+    vi.mocked(useChat).mockReturnValue({
+      messages: [],
+      sendMessage: vi.fn(),
+      status: 'error',
+      stop: vi.fn(),
+      error: new Error('rate limited'),
+      regenerate,
+    } as never);
+
+    render(<ChatColumn model={model} ref={null} />);
+
+    expect(screen.getByText(/something went wrong/i)).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: /retry/i }));
+    expect(regenerate).toHaveBeenCalled();
+  });
+
+  it('shows no error UI when there is no error', () => {
+    vi.mocked(useChat).mockReturnValue({
+      messages: [],
+      sendMessage: vi.fn(),
+      status: 'ready',
+      stop: vi.fn(),
+      error: undefined,
+      regenerate: vi.fn(),
+    } as never);
+
+    render(<ChatColumn model={model} ref={null} />);
+
+    expect(screen.queryByText(/something went wrong/i)).toBeNull();
+  });
+
+  it('does not persist an assistant message with no text content', () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+
+    let capturedOnFinish: ((args: { message: unknown }) => void) | undefined;
+    vi.mocked(useChat).mockImplementation(((options?: { onFinish?: typeof capturedOnFinish }) => {
+      capturedOnFinish = options?.onFinish;
+      return {
+        messages: [],
+        sendMessage: vi.fn(),
+        status: 'ready',
+        stop: vi.fn(),
+        error: undefined,
+        regenerate: vi.fn(),
+      };
+    }) as never);
+
+    const ref = createRef<ChatColumnHandle>();
+    render(<ChatColumn model={model} ref={ref} />);
+    ref.current?.sendMessage('hello', 'conversation-1');
+
+    capturedOnFinish?.({ message: { id: 'm1', role: 'assistant', parts: [] } });
 
     expect(fetchMock).not.toHaveBeenCalled();
     vi.unstubAllGlobals();

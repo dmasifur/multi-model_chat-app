@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { getTableColumns } from 'drizzle-orm';
 import { getTableConfig } from 'drizzle-orm/pg-core';
 import { users, accounts, sessions, verificationTokens } from '@/lib/db/schema';
+import { conversations, messages } from '@/lib/db/schema';
 
 describe('auth.js adapter tables', () => {
   it('users table has the expected name and columns', () => {
@@ -47,5 +48,23 @@ describe('auth.js adapter tables', () => {
     expect(config.primaryKeys[0]?.columns.map((c) => c.name).sort()).toEqual(
       ['identifier', 'token'].sort(),
     );
+  });
+});
+
+describe('app tables', () => {
+  it('conversations table has the expected name and columns', () => {
+    expect(getTableConfig(conversations).name).toBe('conversation');
+    expect(Object.keys(getTableColumns(conversations)).sort()).toEqual(
+      ['id', 'userId', 'title', 'createdAt'].sort(),
+    );
+  });
+
+  it('messages table has the expected name and columns, with modelId nullable', () => {
+    expect(getTableConfig(messages).name).toBe('message');
+    expect(Object.keys(getTableColumns(messages)).sort()).toEqual(
+      ['id', 'conversationId', 'role', 'modelId', 'content', 'createdAt'].sort(),
+    );
+    expect(getTableColumns(messages).modelId.notNull).toBe(false);
+    expect(getTableColumns(messages).content.notNull).toBe(true);
   });
 });

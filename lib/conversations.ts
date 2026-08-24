@@ -67,7 +67,9 @@ export function groupMessagesByModel(allMessages: StoredMessage[]): GroupedColum
 
   return modelIds.map((modelId) => ({
     modelId,
-    messages: allMessages.filter((message) => message.role === 'user' || message.modelId === modelId),
+    messages: allMessages.filter(
+      (message) => message.role === 'user' || message.modelId === modelId,
+    ),
   }));
 }
 

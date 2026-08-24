@@ -30,14 +30,18 @@ describe('POST /api/conversations/[id]/messages', () => {
   it('returns 404 when the conversation is not owned', async () => {
     vi.mocked(auth).mockResolvedValue({ user: { id: 'user-1' } } as never);
     vi.mocked(getConversationWithMessages).mockResolvedValue(null);
-    const res = await POST(req({ role: 'user', content: 'hi' }), { params: Promise.resolve({ id: 'c1' }) });
+    const res = await POST(req({ role: 'user', content: 'hi' }), {
+      params: Promise.resolve({ id: 'c1' }),
+    });
     expect(res.status).toBe(404);
   });
 
   it('returns 400 for an invalid role or empty content', async () => {
     vi.mocked(auth).mockResolvedValue({ user: { id: 'user-1' } } as never);
     vi.mocked(getConversationWithMessages).mockResolvedValue({ id: 'c1' } as never);
-    const res = await POST(req({ role: 'system', content: 'hi' }), { params: Promise.resolve({ id: 'c1' }) });
+    const res = await POST(req({ role: 'system', content: 'hi' }), {
+      params: Promise.resolve({ id: 'c1' }),
+    });
     expect(res.status).toBe(400);
   });
 

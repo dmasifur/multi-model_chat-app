@@ -60,10 +60,12 @@ The directory already contains `.git`, `.gitignore`, `.claude/`, and `docs/`.
 move everything up.
 
 **Files:**
+
 - Create (generated): `package.json`, `tsconfig.json`, `next.config.ts`, `eslint.config.mjs`, `postcss.config.mjs`, `app/layout.tsx`, `app/page.tsx`, `app/globals.css`, etc.
 - Modify: `.gitignore` (merge)
 
 **Interfaces:**
+
 - Produces: a runnable Next.js app with scripts `dev`, `build`, `start`, `lint`; TypeScript path alias `@/*` → project root.
 
 - [ ] **Step 1: Scaffold into a temp directory**
@@ -113,6 +115,7 @@ git commit -m "Scaffold Next.js app with Bun, TypeScript, Tailwind, ESLint"
 ### Task 3: Add Prettier
 
 **Files:**
+
 - Create: `.prettierrc.json`, `.prettierignore`
 - Modify: `package.json` (scripts)
 
@@ -172,10 +175,12 @@ Bun's native `bun test` is not Vitest-compatible; the spec mandates Vitest. Run 
 via `bunx vitest`.
 
 **Files:**
+
 - Create: `vitest.config.ts`, `lib/__tests__/smoke.test.ts`
 - Modify: `package.json` (scripts)
 
 **Interfaces:**
+
 - Produces: `bun run test` → `vitest run`; `@/*` alias resolvable in tests.
 
 - [ ] **Step 1: Install Vitest and jsdom**
@@ -259,9 +264,11 @@ git commit -m "Configure Vitest harness with passing smoke test"
 ### Task 5: Docker Compose Postgres and env template
 
 **Files:**
+
 - Create: `docker-compose.yml`, `.env.example`, `.env` (local, gitignored)
 
 **Interfaces:**
+
 - Produces: `DATABASE_URL` convention consumed by Drizzle in Task 6 and Phase 2.
 
 - [ ] **Step 1: Write `docker-compose.yml`**
@@ -338,10 +345,12 @@ Schema and migrations are Phase 2; here we only install Drizzle and prove the
 client connects to the Docker Postgres.
 
 **Files:**
+
 - Create: `drizzle.config.ts`, `lib/db/index.ts`, `lib/db/__tests__/connect.test.ts`
 - Modify: `package.json` (scripts)
 
 **Interfaces:**
+
 - Produces: `db` (Drizzle client) exported from `@/lib/db`; `bun run db:generate` / `db:migrate` scripts for Phase 2.
 
 - [ ] **Step 1: Install Drizzle and the Postgres driver**
@@ -425,6 +434,7 @@ git commit -m "Configure Drizzle client and connection test"
 ### Task 7: Minimal landing page and final verification
 
 **Files:**
+
 - Modify: `app/page.tsx`
 
 - [ ] **Step 1: Replace `app/page.tsx` with a minimal landing**

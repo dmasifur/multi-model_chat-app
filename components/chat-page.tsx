@@ -2,12 +2,25 @@
 
 import { useRef, useState } from 'react';
 import type { ModelDefinition } from '@/lib/models';
+import type { GroupedColumn } from '@/lib/conversations';
 import { ChatColumn, type ChatColumnHandle } from '@/components/chat-column';
 
-export function ChatPage({ availableModels }: { availableModels: ModelDefinition[] }) {
-  const [selectedModelIds, setSelectedModelIds] = useState<string[]>(
-    availableModels[0] ? [availableModels[0].id] : [],
-  );
+export function ChatPage({
+  availableModels,
+  conversationId: initialConversationId,
+  initialColumns,
+}: {
+  availableModels: ModelDefinition[];
+  conversationId?: string;
+  initialColumns?: GroupedColumn[];
+}) {
+  const [selectedModelIds, setSelectedModelIds] = useState<string[]>(() => {
+    if (initialColumns && initialColumns.length > 0) {
+      return initialColumns.map((column) => column.modelId);
+    }
+    return availableModels[0] ? [availableModels[0].id] : [];
+  });
+  const [conversationId, setConversationId] = useState<string | undefined>(initialConversationId);
   const [input, setInput] = useState('');
   const columnRefs = useRef<Record<string, ChatColumnHandle | null>>({});
 
@@ -21,14 +34,33 @@ export function ChatPage({ availableModels }: { availableModels: ModelDefinition
     );
   }
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const trimmed = input.trim();
     if (!trimmed || selectedModelIds.length === 0) {
       return;
     }
+
+    let activeConversationId = conversationId;
+    if (!activeConversationId) {
+      const response = await fetch('/api/conversations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: trimmed }),
+      });
+      const conversation = (await response.json()) as { id: string };
+      activeConversationId = conversation.id;
+      setConversationId(activeConversationId);
+    }
+
+    await fetch(`/api/conversations/${activeConversationId}/messages`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ role: 'user', modelId: null, content: trimmed }),
+    });
+
     for (const modelId of selectedModelIds) {
-      columnRefs.current[modelId]?.sendMessage(trimmed);
+      columnRefs.current[modelId]?.sendMessage(trimmed, activeConversationId);
     }
     setInput('');
   }
@@ -54,10 +86,20 @@ export function ChatPage({ availableModels }: { availableModels: ModelDefinition
           if (!model) {
             return null;
           }
+          const initial = initialColumns?.find((column) => column.modelId === modelId);
           return (
             <ChatColumn
               key={model.id}
               model={model}
+              initialMessages={
+                initial
+                  ? initial.messages.map((message) => ({
+                      id: crypto.randomUUID(),
+                      role: message.role,
+                      parts: [{ type: 'text' as const, text: message.content }],
+                    }))
+                  : undefined
+              }
               ref={(handle) => {
                 columnRefs.current[model.id] = handle;
               }}

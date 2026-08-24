@@ -93,7 +93,12 @@ describe('POST /api/chat', () => {
                 finishReason: { unified: 'stop', raw: undefined },
                 logprobs: undefined,
                 usage: {
-                  inputTokens: { total: 3, noCache: 3, cacheRead: undefined, cacheWrite: undefined },
+                  inputTokens: {
+                    total: 3,
+                    noCache: 3,
+                    cacheRead: undefined,
+                    cacheWrite: undefined,
+                  },
                   outputTokens: { total: 1, text: 1, reasoning: undefined },
                 },
               },

@@ -1,16 +1,16 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import type { ModelDefinition } from '@/lib/models';
+import type { ModelAvailability } from '@/lib/models';
 import type { GroupedColumn } from '@/lib/conversations';
 import { ChatColumn, type ChatColumnHandle } from '@/components/chat-column';
 
 export function ChatPage({
-  availableModels,
+  allModels,
   conversationId: initialConversationId,
   initialColumns,
 }: {
-  availableModels: ModelDefinition[];
+  allModels: ModelAvailability[];
   conversationId?: string;
   initialColumns?: GroupedColumn[];
 }) {
@@ -18,17 +18,22 @@ export function ChatPage({
     if (initialColumns && initialColumns.length > 0) {
       return initialColumns.map((column) => column.modelId);
     }
-    return availableModels[0] ? [availableModels[0].id] : [];
+    const firstAvailable = allModels.find((model) => model.available);
+    return firstAvailable ? [firstAvailable.id] : [];
   });
   const [conversationId, setConversationId] = useState<string | undefined>(initialConversationId);
   const [input, setInput] = useState('');
   const columnRefs = useRef<Record<string, ChatColumnHandle | null>>({});
 
-  if (availableModels.length === 0) {
+  if (allModels.length === 0) {
     return <p>No models are configured. Set at least one provider API key to start chatting.</p>;
   }
 
   function toggleModel(id: string) {
+    const model = allModels.find((m) => m.id === id);
+    if (!model?.available) {
+      return;
+    }
     setSelectedModelIds((current) =>
       current.includes(id) ? current.filter((existing) => existing !== id) : [...current, id],
     );
@@ -69,20 +74,26 @@ export function ChatPage({
     <main className="mx-auto flex min-h-screen max-w-6xl flex-col gap-4 p-4">
       <fieldset className="flex flex-wrap gap-3">
         <legend className="sr-only">Models to compare</legend>
-        {availableModels.map((model) => (
-          <label key={model.id} className="flex items-center gap-1">
+        {allModels.map((model) => (
+          <label
+            key={model.id}
+            className="flex items-center gap-1"
+            title={model.available ? undefined : `${model.provider} is not configured`}
+          >
             <input
               type="checkbox"
               checked={selectedModelIds.includes(model.id)}
+              disabled={!model.available}
               onChange={() => toggleModel(model.id)}
             />
             {model.label}
+            {!model.available && <span className="text-xs text-gray-400"> (unavailable)</span>}
           </label>
         ))}
       </fieldset>
       <div className="flex flex-1 flex-wrap gap-4">
         {selectedModelIds.map((modelId) => {
-          const model = availableModels.find((m) => m.id === modelId);
+          const model = allModels.find((m) => m.id === modelId);
           if (!model) {
             return null;
           }

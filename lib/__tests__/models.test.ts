@@ -1,0 +1,71 @@
+import { describe, it, expect, afterEach, vi } from 'vitest';
+import { MODEL_REGISTRY, isModelAvailable, listAvailableModels } from '@/lib/models';
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
+
+describe('MODEL_REGISTRY', () => {
+  it('has one entry per supported provider with unique ids', () => {
+    const ids = MODEL_REGISTRY.map((m) => m.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(MODEL_REGISTRY.some((m) => m.provider === 'groq')).toBe(true);
+    expect(MODEL_REGISTRY.some((m) => m.provider === 'openrouter')).toBe(true);
+    expect(MODEL_REGISTRY.some((m) => m.provider === 'ollama')).toBe(true);
+  });
+
+  it('marks the ollama entry as kind "local" and the rest as "hosted"', () => {
+    const ollamaEntry = MODEL_REGISTRY.find((m) => m.provider === 'ollama');
+    expect(ollamaEntry?.kind).toBe('local');
+    const hostedEntries = MODEL_REGISTRY.filter((m) => m.provider !== 'ollama');
+    expect(hostedEntries.every((m) => m.kind === 'hosted')).toBe(true);
+  });
+});
+
+describe('isModelAvailable', () => {
+  it('returns false for an unknown model id', () => {
+    expect(isModelAvailable('does-not-exist')).toBe(false);
+  });
+
+  it('returns false for a hosted model when its API key env var is unset', () => {
+    vi.stubEnv('GROQ_API_KEY', '');
+    const groqEntry = MODEL_REGISTRY.find((m) => m.provider === 'groq')!;
+    expect(isModelAvailable(groqEntry.id)).toBe(false);
+  });
+
+  it('returns true for a hosted model when its API key env var is set', () => {
+    vi.stubEnv('GROQ_API_KEY', 'test-key');
+    const groqEntry = MODEL_REGISTRY.find((m) => m.provider === 'groq')!;
+    expect(isModelAvailable(groqEntry.id)).toBe(true);
+  });
+
+  it('returns false for the local ollama model when OLLAMA_BASE_URL is unset', () => {
+    vi.stubEnv('OLLAMA_BASE_URL', '');
+    const ollamaEntry = MODEL_REGISTRY.find((m) => m.provider === 'ollama')!;
+    expect(isModelAvailable(ollamaEntry.id)).toBe(false);
+  });
+
+  it('returns true for the local ollama model when OLLAMA_BASE_URL is set', () => {
+    vi.stubEnv('OLLAMA_BASE_URL', 'http://localhost:11434');
+    const ollamaEntry = MODEL_REGISTRY.find((m) => m.provider === 'ollama')!;
+    expect(isModelAvailable(ollamaEntry.id)).toBe(true);
+  });
+});
+
+describe('listAvailableModels', () => {
+  it('excludes models whose provider is not configured', () => {
+    vi.stubEnv('GROQ_API_KEY', '');
+    vi.stubEnv('OPENROUTER_API_KEY', '');
+    vi.stubEnv('OLLAMA_BASE_URL', '');
+    expect(listAvailableModels()).toEqual([]);
+  });
+
+  it('includes only models whose provider is configured', () => {
+    vi.stubEnv('GROQ_API_KEY', 'test-key');
+    vi.stubEnv('OPENROUTER_API_KEY', '');
+    vi.stubEnv('OLLAMA_BASE_URL', '');
+    const available = listAvailableModels();
+    expect(available.every((m) => m.provider === 'groq')).toBe(true);
+    expect(available.length).toBeGreaterThan(0);
+  });
+});

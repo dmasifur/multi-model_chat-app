@@ -30,9 +30,11 @@ models (hosted free tiers or locally-run).
   `@ai-sdk/groq`, `@openrouter/ai-sdk-provider`, community `ollama-ai-provider` —
   all plug into the same `streamText()` call, so the hybrid requirement is solved
   by configuration rather than custom per-provider streaming code.
-- **Postgres + Drizzle ORM** for accounts/history.
+- **Postgres + Drizzle ORM** for accounts/history; local Postgres via a
+  `docker-compose.yml`.
 - **Auth.js (NextAuth v5)** + Drizzle adapter, GitHub + Google OAuth.
-- **Vitest** for unit/integration tests; Playwright deferred.
+- **Bun** as package manager / runtime; **Vitest** for unit/integration tests;
+  Playwright deferred.
 
 ## Architecture (three layers)
 
@@ -124,8 +126,9 @@ providers.
 
 ## Phases
 
-1. **Scaffold & tooling** — git, Next.js + TS, ESLint/Prettier, Vitest, env
-   config, Drizzle configured, base layout.
+1. **Scaffold & tooling** — git, Next.js + TS (Bun), ESLint/Prettier, Vitest, env
+   config, `docker-compose.yml` for local Postgres, Drizzle configured, base
+   layout.
 2. **Database schema & migrations** — Drizzle schema (`users`, Auth.js
    `accounts`/`sessions`, `conversations`, `messages`); generate + run migrations.
 3. **Auth** — Auth.js + Drizzle adapter; GitHub + Google; sign-in page;
@@ -144,10 +147,10 @@ providers.
 
 ## Verification
 
-- `pnpm dev`, sign in, select two models, send a prompt → two columns stream
+- `bun dev`, sign in, select two models, send a prompt → two columns stream
   concurrently.
 - Reload → conversation and both columns' messages restored from DB.
 - Remove one provider's API key → that model disabled in the picker; others work.
 - Force a provider error → only that column shows retry; others unaffected.
-- `pnpm test` green (registry resolution, message grouping, `/api/chat`
+- `bun test` green (registry resolution, message grouping, `/api/chat`
   integration).

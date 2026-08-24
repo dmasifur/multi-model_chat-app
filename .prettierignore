@@ -2,3 +2,5 @@ node_modules
 .next
 bun.lock
 drizzle
+docs
+.superpowers

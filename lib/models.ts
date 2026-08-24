@@ -1,3 +1,8 @@
+import type { LanguageModel } from 'ai';
+import { createGroq } from '@ai-sdk/groq';
+import { createOpenRouter } from '@openrouter/ai-sdk-provider';
+import { createOllama } from 'ollama-ai-provider-v2';
+
 export type ModelKind = 'hosted' | 'local';
 export type ModelProviderName = 'groq' | 'openrouter' | 'ollama';
 
@@ -54,4 +59,29 @@ export function isModelAvailable(id: string): boolean {
 
 export function listAvailableModels(): ModelDefinition[] {
   return MODEL_REGISTRY.filter((m) => isProviderConfigured(m.provider));
+}
+
+export function getModel(id: string): LanguageModel {
+  const definition = MODEL_REGISTRY.find((m) => m.id === id);
+  if (!definition) {
+    throw new Error(`Unknown model id: ${id}`);
+  }
+  if (!isModelAvailable(id)) {
+    throw new Error(`Model "${id}" is not available: ${definition.provider} is not configured`);
+  }
+
+  switch (definition.provider) {
+    case 'groq': {
+      const groq = createGroq({ apiKey: process.env.GROQ_API_KEY });
+      return groq(definition.providerModelId);
+    }
+    case 'openrouter': {
+      const openrouter = createOpenRouter({ apiKey: process.env.OPENROUTER_API_KEY });
+      return openrouter.chat(definition.providerModelId);
+    }
+    case 'ollama': {
+      const ollama = createOllama({ baseURL: process.env.OLLAMA_BASE_URL });
+      return ollama(definition.providerModelId);
+    }
+  }
 }

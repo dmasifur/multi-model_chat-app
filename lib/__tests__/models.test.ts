@@ -85,20 +85,20 @@ describe('getModel', () => {
     vi.stubEnv('GROQ_API_KEY', 'test-key');
     const groqEntry = MODEL_REGISTRY.find((m) => m.provider === 'groq')!;
     const model = getModel(groqEntry.id);
-    expect(model.modelId).toBe(groqEntry.providerModelId);
+    expect((model as { modelId: string }).modelId).toBe(groqEntry.providerModelId);
   });
 
   it('returns a language model instance for a configured openrouter model', () => {
     vi.stubEnv('OPENROUTER_API_KEY', 'test-key');
     const openrouterEntry = MODEL_REGISTRY.find((m) => m.provider === 'openrouter')!;
     const model = getModel(openrouterEntry.id);
-    expect(model.modelId).toBe(openrouterEntry.providerModelId);
+    expect((model as { modelId: string }).modelId).toBe(openrouterEntry.providerModelId);
   });
 
   it('returns a language model instance for a configured ollama model', () => {
     vi.stubEnv('OLLAMA_BASE_URL', 'http://localhost:11434');
     const ollamaEntry = MODEL_REGISTRY.find((m) => m.provider === 'ollama')!;
     const model = getModel(ollamaEntry.id);
-    expect(model.modelId).toBe(ollamaEntry.providerModelId);
+    expect((model as { modelId: string }).modelId).toBe(ollamaEntry.providerModelId);
   });
 });

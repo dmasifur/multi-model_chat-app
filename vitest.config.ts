@@ -9,6 +9,11 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     env: loadEnv('', process.cwd(), ''),
+    server: {
+      deps: {
+        inline: ['next-auth', '@auth/drizzle-adapter', 'next'],
+      },
+    },
   },
   resolve: {
     alias: { '@': resolve(__dirname, '.') },

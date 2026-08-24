@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach, vi } from 'vitest';
-import { MODEL_REGISTRY, isModelAvailable, listAvailableModels } from '@/lib/models';
+import { MODEL_REGISTRY, isModelAvailable, listAvailableModels, getModel } from '@/lib/models';
 
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -67,5 +67,38 @@ describe('listAvailableModels', () => {
     const available = listAvailableModels();
     expect(available.every((m) => m.provider === 'groq')).toBe(true);
     expect(available.length).toBeGreaterThan(0);
+  });
+});
+
+describe('getModel', () => {
+  it('throws for an unknown model id', () => {
+    expect(() => getModel('does-not-exist')).toThrow(/unknown model/i);
+  });
+
+  it('throws when the model exists but its provider is not configured', () => {
+    vi.stubEnv('GROQ_API_KEY', '');
+    const groqEntry = MODEL_REGISTRY.find((m) => m.provider === 'groq')!;
+    expect(() => getModel(groqEntry.id)).toThrow(/not (configured|available)/i);
+  });
+
+  it('returns a language model instance for a configured groq model', () => {
+    vi.stubEnv('GROQ_API_KEY', 'test-key');
+    const groqEntry = MODEL_REGISTRY.find((m) => m.provider === 'groq')!;
+    const model = getModel(groqEntry.id);
+    expect(model.modelId).toBe(groqEntry.providerModelId);
+  });
+
+  it('returns a language model instance for a configured openrouter model', () => {
+    vi.stubEnv('OPENROUTER_API_KEY', 'test-key');
+    const openrouterEntry = MODEL_REGISTRY.find((m) => m.provider === 'openrouter')!;
+    const model = getModel(openrouterEntry.id);
+    expect(model.modelId).toBe(openrouterEntry.providerModelId);
+  });
+
+  it('returns a language model instance for a configured ollama model', () => {
+    vi.stubEnv('OLLAMA_BASE_URL', 'http://localhost:11434');
+    const ollamaEntry = MODEL_REGISTRY.find((m) => m.provider === 'ollama')!;
+    const model = getModel(ollamaEntry.id);
+    expect(model.modelId).toBe(ollamaEntry.providerModelId);
   });
 });

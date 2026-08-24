@@ -1,7 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import type { ModelDefinition } from '@/lib/models';
-
 vi.mock('@ai-sdk/react', () => ({
   useChat: vi.fn(),
 }));
@@ -9,13 +7,14 @@ vi.mock('@ai-sdk/react', () => ({
 import { useChat } from '@ai-sdk/react';
 import { ChatPage } from '@/components/chat-page';
 
-const models: ModelDefinition[] = [
+const models: import('@/lib/models').ModelAvailability[] = [
   {
     id: 'groq-llama-3.3-70b',
     label: 'Llama 3.3 70B (Groq)',
     provider: 'groq',
     providerModelId: 'llama-3.3-70b-versatile',
     kind: 'hosted',
+    available: true,
   },
   {
     id: 'ollama-llama-3.1',
@@ -23,6 +22,7 @@ const models: ModelDefinition[] = [
     provider: 'ollama',
     providerModelId: 'llama3.1',
     kind: 'local',
+    available: true,
   },
 ];
 
@@ -38,12 +38,12 @@ beforeEach(() => {
 
 describe('ChatPage', () => {
   it('shows a message when no models are configured', () => {
-    render(<ChatPage availableModels={[]} />);
+    render(<ChatPage allModels={[]} />);
     expect(screen.getByText(/no models are configured/i)).toBeTruthy();
   });
 
   it('renders a checkbox per model, with the first pre-selected', () => {
-    render(<ChatPage availableModels={models} />);
+    render(<ChatPage allModels={models} />);
 
     const first = screen.getByRole('checkbox', { name: models[0].label }) as HTMLInputElement;
     const second = screen.getByRole('checkbox', { name: models[1].label }) as HTMLInputElement;
@@ -52,7 +52,7 @@ describe('ChatPage', () => {
   });
 
   it('mounts a column when a model is checked and unmounts it when unchecked', () => {
-    render(<ChatPage availableModels={models} />);
+    render(<ChatPage allModels={models} />);
 
     expect(screen.getAllByText(models[0].label)).toHaveLength(2); // checkbox label + column header
     expect(screen.queryAllByText(models[1].label)).toHaveLength(1); // checkbox label only
@@ -79,7 +79,7 @@ describe('ChatPage', () => {
       .mockResolvedValue(new Response(null, { status: 201 }));
     vi.stubGlobal('fetch', fetchMock);
 
-    render(<ChatPage availableModels={models} />);
+    render(<ChatPage allModels={models} />);
     fireEvent.click(screen.getByRole('checkbox', { name: models[1].label }));
 
     fireEvent.change(screen.getByPlaceholderText(/type a message/i), {
@@ -109,7 +109,7 @@ describe('ChatPage', () => {
       .mockResolvedValue(new Response(null, { status: 201 }));
     vi.stubGlobal('fetch', fetchMock);
 
-    render(<ChatPage availableModels={models} />);
+    render(<ChatPage allModels={models} />);
 
     const input = screen.getByPlaceholderText(/type a message/i) as HTMLInputElement;
     fireEvent.change(input, { target: { value: 'hello' } });
@@ -129,7 +129,7 @@ describe('ChatPage', () => {
       stop: vi.fn(),
     } as never);
 
-    render(<ChatPage availableModels={models} />);
+    render(<ChatPage allModels={models} />);
     fireEvent.change(screen.getByPlaceholderText(/type a message/i), { target: { value: '   ' } });
     fireEvent.click(screen.getByRole('button', { name: /send/i }));
 
@@ -137,7 +137,7 @@ describe('ChatPage', () => {
   });
 
   it('disables the submit button when no models are selected', () => {
-    render(<ChatPage availableModels={models} />);
+    render(<ChatPage allModels={models} />);
 
     fireEvent.click(screen.getByRole('checkbox', { name: models[0].label }));
 
@@ -159,7 +159,7 @@ describe('ChatPage', () => {
       .mockResolvedValueOnce(new Response(null, { status: 201 }));
     vi.stubGlobal('fetch', fetchMock);
 
-    render(<ChatPage availableModels={models} />);
+    render(<ChatPage allModels={models} />);
     fireEvent.change(screen.getByPlaceholderText(/type a message/i), {
       target: { value: 'hello world' },
     });
@@ -196,7 +196,7 @@ describe('ChatPage', () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 201 }));
     vi.stubGlobal('fetch', fetchMock);
 
-    render(<ChatPage availableModels={models} conversationId="conv-existing" />);
+    render(<ChatPage allModels={models} conversationId="conv-existing" />);
     fireEvent.change(screen.getByPlaceholderText(/type a message/i), {
       target: { value: 'second turn' },
     });
@@ -221,7 +221,7 @@ describe('ChatPage', () => {
 
     render(
       <ChatPage
-        availableModels={models}
+        allModels={models}
         conversationId="conv-1"
         initialColumns={[
           {
@@ -236,5 +236,83 @@ describe('ChatPage', () => {
     const second = screen.getByRole('checkbox', { name: models[1].label }) as HTMLInputElement;
     expect(first.checked).toBe(false);
     expect(second.checked).toBe(true);
+  });
+
+  it('renders every model, disabling and tooltipping unavailable ones', () => {
+    vi.mocked(useChat).mockReturnValue({
+      messages: [],
+      sendMessage: vi.fn(),
+      status: 'ready',
+      stop: vi.fn(),
+      error: undefined,
+      regenerate: vi.fn(),
+    } as never);
+
+    const mixedModels = [models[0], { ...models[1], available: false }];
+    render(<ChatPage allModels={mixedModels} />);
+
+    const unavailableCheckbox = screen.getByRole('checkbox', {
+      name: /llama 3.1/i,
+    }) as HTMLInputElement;
+    expect(unavailableCheckbox.disabled).toBe(true);
+
+    const availableCheckbox = screen.getByRole('checkbox', {
+      name: /llama 3.3 70b \(groq\)/i,
+    }) as HTMLInputElement;
+    expect(availableCheckbox.disabled).toBe(false);
+  });
+
+  it('does not toggle a disabled model when clicked', () => {
+    vi.mocked(useChat).mockReturnValue({
+      messages: [],
+      sendMessage: vi.fn(),
+      status: 'ready',
+      stop: vi.fn(),
+      error: undefined,
+      regenerate: vi.fn(),
+    } as never);
+
+    const mixedModels = [models[0], { ...models[1], available: false }];
+    render(<ChatPage allModels={mixedModels} />);
+
+    const unavailableCheckbox = screen.getByRole('checkbox', {
+      name: /llama 3.1/i,
+    }) as HTMLInputElement;
+    fireEvent.click(unavailableCheckbox);
+
+    expect(unavailableCheckbox.checked).toBe(false);
+  });
+
+  it('defaults selection to the first available model, skipping unavailable ones', () => {
+    vi.mocked(useChat).mockReturnValue({
+      messages: [],
+      sendMessage: vi.fn(),
+      status: 'ready',
+      stop: vi.fn(),
+      error: undefined,
+      regenerate: vi.fn(),
+    } as never);
+
+    const mixedModels = [{ ...models[0], available: false }, models[1]];
+    render(<ChatPage allModels={mixedModels} />);
+
+    const secondCheckbox = screen.getByRole('checkbox', { name: /llama 3.1/i }) as HTMLInputElement;
+    expect(secondCheckbox.checked).toBe(true);
+  });
+
+  it('disables submit when every model is unavailable', () => {
+    vi.mocked(useChat).mockReturnValue({
+      messages: [],
+      sendMessage: vi.fn(),
+      status: 'ready',
+      stop: vi.fn(),
+      error: undefined,
+      regenerate: vi.fn(),
+    } as never);
+
+    const allUnavailable = models.map((m) => ({ ...m, available: false }));
+    render(<ChatPage allModels={allUnavailable} />);
+
+    expect(screen.getByRole('button', { name: /send/i })).toHaveProperty('disabled', true);
   });
 });

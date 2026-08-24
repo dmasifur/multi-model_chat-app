@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import { auth } from '@/auth';
-import { listAvailableModels } from '@/lib/models';
+import { listAllModelsWithAvailability } from '@/lib/models';
 import { getConversationWithMessages, groupMessagesByModel } from '@/lib/conversations';
 import { ChatPage } from '@/components/chat-page';
 import { AppShell } from '@/components/app-shell';
@@ -20,7 +20,7 @@ export default async function ConversationPage({ params }: { params: Promise<{ i
   return (
     <AppShell>
       <ChatPage
-        availableModels={listAvailableModels()}
+        allModels={listAllModelsWithAvailability()}
         conversationId={conversation.id}
         initialColumns={groupMessagesByModel(conversation.messages)}
       />

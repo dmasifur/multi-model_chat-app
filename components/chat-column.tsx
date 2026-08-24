@@ -1,24 +1,48 @@
 'use client';
 
-import { useImperativeHandle } from 'react';
+import { useImperativeHandle, useRef } from 'react';
 import { useChat } from '@ai-sdk/react';
+import type { UIMessage } from 'ai';
 import type { ModelDefinition } from '@/lib/models';
+import { getMessageText } from '@/lib/chat/message-text';
 
 export interface ChatColumnHandle {
-  sendMessage: (text: string) => void;
+  sendMessage: (text: string, conversationId: string) => void;
 }
 
 export function ChatColumn({
   model,
+  initialMessages,
   ref,
 }: {
   model: ModelDefinition;
+  initialMessages?: UIMessage[];
   ref: React.Ref<ChatColumnHandle>;
 }) {
-  const { messages, sendMessage, status, stop } = useChat();
+  const conversationIdRef = useRef<string | null>(null);
+
+  const { messages, sendMessage, status, stop } = useChat({
+    messages: initialMessages,
+    onFinish: ({ message }) => {
+      const conversationId = conversationIdRef.current;
+      if (!conversationId) {
+        return;
+      }
+      fetch(`/api/conversations/${conversationId}/messages`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          role: 'assistant',
+          modelId: model.id,
+          content: getMessageText(message as UIMessage),
+        }),
+      });
+    },
+  });
 
   useImperativeHandle(ref, () => ({
-    sendMessage: (text: string) => {
+    sendMessage: (text: string, conversationId: string) => {
+      conversationIdRef.current = conversationId;
       sendMessage({ text }, { body: { modelId: model.id } });
     },
   }));

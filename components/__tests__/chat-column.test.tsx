@@ -79,18 +79,59 @@ describe('ChatColumn', () => {
 
   it('exposes sendMessage via ref that calls the underlying sendMessage with modelId', () => {
     const sendMessage = vi.fn();
-    vi.mocked(useChat).mockReturnValue({
-      messages: [],
-      sendMessage,
-      status: 'ready',
-      stop: vi.fn(),
-    } as never);
+    vi.mocked(useChat).mockReturnValue({ messages: [], sendMessage, status: 'ready', stop: vi.fn() } as never);
 
     const ref = createRef<ChatColumnHandle>();
     render(<ChatColumn model={model} ref={ref} />);
 
-    ref.current?.sendMessage('hello');
+    ref.current?.sendMessage('hello', 'conversation-1');
 
     expect(sendMessage).toHaveBeenCalledWith({ text: 'hello' }, { body: { modelId: model.id } });
+  });
+
+  it('posts the assistant message to the conversation when a stream finishes', () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 201 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    let capturedOnFinish: ((args: { message: unknown }) => void) | undefined;
+    vi.mocked(useChat).mockImplementation(((options?: { onFinish?: typeof capturedOnFinish }) => {
+      capturedOnFinish = options?.onFinish;
+      return { messages: [], sendMessage: vi.fn(), status: 'ready', stop: vi.fn() };
+    }) as never);
+
+    const ref = createRef<ChatColumnHandle>();
+    render(<ChatColumn model={model} ref={ref} />);
+    ref.current?.sendMessage('hello', 'conversation-1');
+
+    capturedOnFinish?.({
+      message: { id: 'm1', role: 'assistant', parts: [{ type: 'text', text: 'reply text' }] },
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/conversations/conversation-1/messages',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ role: 'assistant', modelId: model.id, content: 'reply text' }),
+      }),
+    );
+
+    vi.unstubAllGlobals();
+  });
+
+  it('does not post when onFinish fires before any sendMessage call set a conversation id', () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+
+    let capturedOnFinish: ((args: { message: unknown }) => void) | undefined;
+    vi.mocked(useChat).mockImplementation(((options?: { onFinish?: typeof capturedOnFinish }) => {
+      capturedOnFinish = options?.onFinish;
+      return { messages: [], sendMessage: vi.fn(), status: 'ready', stop: vi.fn() };
+    }) as never);
+
+    render(<ChatColumn model={model} ref={null} />);
+    capturedOnFinish?.({ message: { id: 'm1', role: 'assistant', parts: [{ type: 'text', text: 'x' }] } });
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
   });
 });

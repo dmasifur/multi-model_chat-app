@@ -1,5 +1,11 @@
 import { describe, it, expect, afterEach, vi } from 'vitest';
-import { MODEL_REGISTRY, isModelAvailable, listAvailableModels, getModel } from '@/lib/models';
+import {
+  MODEL_REGISTRY,
+  isModelAvailable,
+  listAvailableModels,
+  getModel,
+  listAllModelsWithAvailability,
+} from '@/lib/models';
 
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -100,5 +106,26 @@ describe('getModel', () => {
     const ollamaEntry = MODEL_REGISTRY.find((m) => m.provider === 'ollama')!;
     const model = getModel(ollamaEntry.id);
     expect((model as { modelId: string }).modelId).toBe(ollamaEntry.providerModelId);
+  });
+});
+
+describe('listAllModelsWithAvailability', () => {
+  it('returns every registry entry regardless of configuration', () => {
+    vi.stubEnv('GROQ_API_KEY', '');
+    vi.stubEnv('OPENROUTER_API_KEY', '');
+    vi.stubEnv('OLLAMA_BASE_URL', '');
+    const all = listAllModelsWithAvailability();
+    expect(all).toHaveLength(MODEL_REGISTRY.length);
+  });
+
+  it('marks each entry available or not per its provider configuration', () => {
+    vi.stubEnv('GROQ_API_KEY', 'test-key');
+    vi.stubEnv('OPENROUTER_API_KEY', '');
+    vi.stubEnv('OLLAMA_BASE_URL', '');
+    const all = listAllModelsWithAvailability();
+    const groqEntry = all.find((m) => m.provider === 'groq')!;
+    const openrouterEntry = all.find((m) => m.provider === 'openrouter')!;
+    expect(groqEntry.available).toBe(true);
+    expect(openrouterEntry.available).toBe(false);
   });
 });

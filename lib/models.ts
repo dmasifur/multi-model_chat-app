@@ -61,6 +61,17 @@ export function listAvailableModels(): ModelDefinition[] {
   return MODEL_REGISTRY.filter((m) => isProviderConfigured(m.provider));
 }
 
+export interface ModelAvailability extends ModelDefinition {
+  available: boolean;
+}
+
+export function listAllModelsWithAvailability(): ModelAvailability[] {
+  return MODEL_REGISTRY.map((model) => ({
+    ...model,
+    available: isProviderConfigured(model.provider),
+  }));
+}
+
 export function getModel(id: string): LanguageModel {
   const definition = MODEL_REGISTRY.find((m) => m.id === id);
   if (!definition) {

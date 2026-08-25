@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { auth } from '@/auth';
-import { getConversationWithMessages, saveMessage } from '@/lib/conversations';
+import { saveMessage } from '@/lib/conversations';
 import { isKnownModelId } from '@/lib/models';
 import { MAX_MESSAGE_LENGTH } from '@/lib/chat/message-length';
 
@@ -20,10 +20,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   }
 
   const { id } = await params;
-  const conversation = await getConversationWithMessages(session.user.id, id);
-  if (!conversation) {
-    return new Response('Not found', { status: 404 });
-  }
 
   let json: unknown;
   try {
@@ -44,6 +40,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     modelId: parsed.data.modelId ?? null,
     content: parsed.data.content,
   });
+  // saveMessage returns null when the conversation isn't owned by this user,
+  // which is the only ownership check this route needs.
   if (!message) {
     return new Response('Not found', { status: 404 });
   }

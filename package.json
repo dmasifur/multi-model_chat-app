@@ -7,10 +7,12 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "typecheck": "tsc --noEmit",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "test": "vitest run",
-    "test:watch": "vitest",
+    "test": "bun --env-file=.env.test run vitest run",
+    "test:watch": "bun --env-file=.env.test run vitest",
+    "test:coverage": "bun --env-file=.env.test run vitest run --coverage",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate"
   },
@@ -22,11 +24,13 @@
     "ai": "^7.0.78",
     "drizzle-orm": "^0.45.2",
     "next": "16.3.2",
-    "next-auth": "^5.0.0-beta.32",
+    "next-auth": "5.0.0-beta.32",
     "ollama-ai-provider-v2": "^4.0.1",
     "postgres": "^3.4.9",
     "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "react-dom": "19.2.8",
+    "server-only": "^0.0.1",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -35,6 +39,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^6.1.0",
+    "@vitest/coverage-v8": "^4.1.11",
     "drizzle-kit": "^0.31.10",
     "eslint": "^9",
     "eslint-config-next": "16.3.2",

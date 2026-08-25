@@ -2,6 +2,7 @@ import { describe, it, expect, afterEach, vi } from 'vitest';
 import {
   MODEL_REGISTRY,
   isModelAvailable,
+  isKnownModelId,
   listAvailableModels,
   getModel,
   listAllModelsWithAvailability,
@@ -25,6 +26,18 @@ describe('MODEL_REGISTRY', () => {
     expect(ollamaEntry?.kind).toBe('local');
     const hostedEntries = MODEL_REGISTRY.filter((m) => m.provider !== 'ollama');
     expect(hostedEntries.every((m) => m.kind === 'hosted')).toBe(true);
+  });
+});
+
+describe('isKnownModelId', () => {
+  it('returns true for a model id in the registry, regardless of configuration', () => {
+    vi.stubEnv('GROQ_API_KEY', '');
+    const groqEntry = MODEL_REGISTRY.find((m) => m.provider === 'groq')!;
+    expect(isKnownModelId(groqEntry.id)).toBe(true);
+  });
+
+  it('returns false for a model id not in the registry', () => {
+    expect(isKnownModelId('made-up-model-id')).toBe(false);
   });
 });
 

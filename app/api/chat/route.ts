@@ -7,7 +7,11 @@ import {
 } from 'ai';
 import { auth } from '@/auth';
 import { getModel, isModelAvailable } from '@/lib/models';
-import { exceedsMaxLength } from '@/lib/chat/message-length';
+import { chatRequestSchema } from '@/lib/chat/message-schema';
+import { checkRateLimit } from '@/lib/rate-limit';
+import { recordUsage } from '@/lib/usage';
+
+const MAX_OUTPUT_TOKENS = 2048;
 
 export async function POST(req: Request) {
   const session = await auth();
@@ -15,30 +19,65 @@ export async function POST(req: Request) {
     return new Response('Unauthorized', { status: 401 });
   }
 
-  let body: { messages?: UIMessage[]; modelId?: string };
+  let json: unknown;
   try {
-    body = (await req.json()) as { messages?: UIMessage[]; modelId?: string };
+    json = await req.json();
   } catch {
     return new Response('Invalid JSON body', { status: 400 });
   }
-  const { messages, modelId } = body;
 
-  if (!modelId || !isModelAvailable(modelId)) {
+  const parsed = chatRequestSchema.safeParse(json);
+  if (!parsed.success) {
+    return new Response('Invalid request body', { status: 400 });
+  }
+  const { messages, modelId } = parsed.data;
+
+  if (!isModelAvailable(modelId)) {
     return new Response('Invalid or unavailable model', { status: 400 });
   }
 
-  if (!Array.isArray(messages) || messages.length === 0) {
-    return new Response('Messages are required', { status: 400 });
+  // Fail closed: if the limiter can't be consulted we refuse the request
+  // rather than let an unmetered call through to a paid provider.
+  let withinRateLimit: boolean;
+  try {
+    withinRateLimit = await checkRateLimit(session.user.id);
+  } catch {
+    return new Response('Rate limiter unavailable', { status: 503 });
+  }
+  if (!withinRateLimit) {
+    return new Response('Too many requests', { status: 429 });
   }
 
-  const lastMessage = messages[messages.length - 1];
-  if (exceedsMaxLength(lastMessage)) {
-    return new Response('Message too long', { status: 400 });
-  }
-
+  const userId = session.user.id;
   const result = streamText({
     model: getModel(modelId),
-    messages: await convertToModelMessages(messages),
+    messages: await convertToModelMessages(messages as UIMessage[]),
+    maxOutputTokens: MAX_OUTPUT_TOKENS,
+    abortSignal: req.signal,
+    onFinish: async ({ usage }) => {
+      await recordUsage({
+        userId,
+        modelId,
+        inputTokens: usage.inputTokens ?? null,
+        outputTokens: usage.outputTokens ?? null,
+      }).catch(() => {
+        // Usage logging is best-effort and must never fail the response.
+      });
+    },
+    // onFinish never fires on a client-initiated abort. The provider may
+    // still have billed for tokens generated before the abort, but the SDK
+    // has no usage figure to give us for an incomplete step - this at least
+    // records that an aborted request happened, for abuse-pattern auditing.
+    onAbort: async () => {
+      await recordUsage({
+        userId,
+        modelId,
+        inputTokens: null,
+        outputTokens: null,
+      }).catch(() => {
+        // Usage logging is best-effort and must never fail the response.
+      });
+    },
   });
 
   return createUIMessageStreamResponse({

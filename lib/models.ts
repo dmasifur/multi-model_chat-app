@@ -1,3 +1,4 @@
+import 'server-only';
 import type { LanguageModel } from 'ai';
 import { createGroq } from '@ai-sdk/groq';
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
@@ -47,6 +48,10 @@ function isProviderConfigured(provider: ModelProviderName): boolean {
     case 'ollama':
       return Boolean(process.env.OLLAMA_BASE_URL);
   }
+}
+
+export function isKnownModelId(id: string): boolean {
+  return MODEL_REGISTRY.some((m) => m.id === id);
 }
 
 export function isModelAvailable(id: string): boolean {

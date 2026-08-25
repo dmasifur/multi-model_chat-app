@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { randomUUID } from 'node:crypto';
 import { db } from '@/lib/db';
 import { users } from '@/lib/db/schema';
+import { isDatabaseReachable } from '@/lib/db/test-helpers';
 import {
   createConversation,
   listConversations,
@@ -19,7 +20,14 @@ async function makeTestUser() {
   return user;
 }
 
-describe('conversation persistence (live Postgres)', () => {
+const reachable = await isDatabaseReachable();
+if (!reachable) {
+  console.warn(
+    '[conversation persistence] Skipping: Postgres is not reachable at DATABASE_URL. Run `docker compose up -d` first.',
+  );
+}
+
+describe.skipIf(!reachable)('conversation persistence (live Postgres)', () => {
   it('creates a conversation owned by the given user', async () => {
     const user = await makeTestUser();
     const conversation = await createConversation(user.id, 'My first chat');
@@ -40,18 +48,21 @@ describe('conversation persistence (live Postgres)', () => {
     const conversation = await createConversation(user.id, 'Compare models');
 
     await saveMessage({
+      userId: user.id,
       conversationId: conversation.id,
       role: 'user',
       modelId: null,
       content: 'Hello',
     });
     await saveMessage({
+      userId: user.id,
       conversationId: conversation.id,
       role: 'assistant',
       modelId: 'groq-llama-3.3-70b',
       content: 'Hi from Groq',
     });
     await saveMessage({
+      userId: user.id,
       conversationId: conversation.id,
       role: 'assistant',
       modelId: 'ollama-llama-3.1',
@@ -75,6 +86,24 @@ describe('conversation persistence (live Postgres)', () => {
     const conversation = await createConversation(owner.id, 'Private');
     const loaded = await getConversationWithMessages(stranger.id, conversation.id);
     expect(loaded).toBeNull();
+  });
+
+  it('refuses to save a message when the given userId does not own the conversation', async () => {
+    const owner = await makeTestUser();
+    const stranger = await makeTestUser();
+    const conversation = await createConversation(owner.id, 'Private');
+
+    const result = await saveMessage({
+      userId: stranger.id,
+      conversationId: conversation.id,
+      role: 'user',
+      modelId: null,
+      content: 'Should not be written',
+    });
+
+    expect(result).toBeNull();
+    const loaded = await getConversationWithMessages(owner.id, conversation.id);
+    expect(loaded?.messages).toHaveLength(0);
   });
 });
 

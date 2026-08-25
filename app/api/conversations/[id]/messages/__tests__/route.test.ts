@@ -27,27 +27,54 @@ describe('POST /api/conversations/[id]/messages', () => {
     expect(res.status).toBe(401);
   });
 
-  it('returns 404 when the conversation is not owned', async () => {
+  it('returns 404 when the conversation is not owned by the caller', async () => {
     vi.mocked(auth).mockResolvedValue({ user: { id: 'user-1' } } as never);
-    vi.mocked(getConversationWithMessages).mockResolvedValue(null);
+    vi.mocked(saveMessage).mockResolvedValue(null);
+
     const res = await POST(req({ role: 'user', content: 'hi' }), {
       params: Promise.resolve({ id: 'c1' }),
     });
+
     expect(res.status).toBe(404);
   });
 
   it('returns 400 for an invalid role or empty content', async () => {
     vi.mocked(auth).mockResolvedValue({ user: { id: 'user-1' } } as never);
-    vi.mocked(getConversationWithMessages).mockResolvedValue({ id: 'c1' } as never);
     const res = await POST(req({ role: 'system', content: 'hi' }), {
       params: Promise.resolve({ id: 'c1' }),
     });
     expect(res.status).toBe(400);
   });
 
+  it('returns 400 for a malformed JSON body instead of crashing', async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: 'user-1' } } as never);
+    const res = await POST(
+      new Request('http://localhost', { method: 'POST', body: 'not valid json' }),
+      { params: Promise.resolve({ id: 'c1' }) },
+    );
+    expect(res.status).toBe(400);
+  });
+
+  it('returns 400 for content over the max message length', async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: 'user-1' } } as never);
+    const res = await POST(req({ role: 'user', content: 'a'.repeat(4001) }), {
+      params: Promise.resolve({ id: 'c1' }),
+    });
+    expect(res.status).toBe(400);
+    expect(saveMessage).not.toHaveBeenCalled();
+  });
+
+  it('returns 400 for a modelId that is not in the model registry', async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: 'user-1' } } as never);
+    const res = await POST(req({ role: 'assistant', modelId: 'made-up-model-id', content: 'hi' }), {
+      params: Promise.resolve({ id: 'c1' }),
+    });
+    expect(res.status).toBe(400);
+    expect(saveMessage).not.toHaveBeenCalled();
+  });
+
   it('saves a valid message', async () => {
     vi.mocked(auth).mockResolvedValue({ user: { id: 'user-1' } } as never);
-    vi.mocked(getConversationWithMessages).mockResolvedValue({ id: 'c1' } as never);
     vi.mocked(saveMessage).mockResolvedValue({ id: 'm1' } as never);
 
     const res = await POST(
@@ -57,10 +84,20 @@ describe('POST /api/conversations/[id]/messages', () => {
 
     expect(res.status).toBe(201);
     expect(saveMessage).toHaveBeenCalledWith({
+      userId: 'user-1',
       conversationId: 'c1',
       role: 'assistant',
       modelId: 'groq-llama-3.3-70b',
       content: 'Hi',
     });
+  });
+
+  it('does not read the conversation history just to authorize the write', async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: 'user-1' } } as never);
+    vi.mocked(saveMessage).mockResolvedValue({ id: 'm1' } as never);
+
+    await POST(req({ role: 'user', content: 'hi' }), { params: Promise.resolve({ id: 'c1' }) });
+
+    expect(getConversationWithMessages).not.toHaveBeenCalled();
   });
 });

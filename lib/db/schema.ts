@@ -1,4 +1,4 @@
-import { text, timestamp, integer, pgTable, primaryKey, pgEnum } from 'drizzle-orm/pg-core';
+import { text, timestamp, integer, pgTable, primaryKey, pgEnum, index } from 'drizzle-orm/pg-core';
 
 export const users = pgTable('user', {
   id: text('id')
@@ -32,14 +32,6 @@ export const accounts = pgTable(
   }),
 );
 
-export const sessions = pgTable('session', {
-  sessionToken: text('sessionToken').primaryKey(),
-  userId: text('userId')
-    .notNull()
-    .references(() => users.id, { onDelete: 'cascade' }),
-  expires: timestamp('expires', { mode: 'date' }).notNull(),
-});
-
 export const verificationTokens = pgTable(
   'verificationToken',
   {
@@ -54,26 +46,59 @@ export const verificationTokens = pgTable(
 
 export const messageRoleEnum = pgEnum('message_role', ['user', 'assistant']);
 
-export const conversations = pgTable('conversation', {
-  id: text('id')
-    .primaryKey()
-    .$defaultFn(() => crypto.randomUUID()),
+export const conversations = pgTable(
+  'conversation',
+  {
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    userId: text('userId')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    title: text('title').notNull(),
+    createdAt: timestamp('createdAt', { mode: 'date' }).notNull().defaultNow(),
+  },
+  (table) => [index('conversation_userId_idx').on(table.userId)],
+);
+
+export const messages = pgTable(
+  'message',
+  {
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    conversationId: text('conversationId')
+      .notNull()
+      .references(() => conversations.id, { onDelete: 'cascade' }),
+    role: messageRoleEnum('role').notNull(),
+    modelId: text('modelId'),
+    content: text('content').notNull(),
+    createdAt: timestamp('createdAt', { mode: 'date' }).notNull().defaultNow(),
+  },
+  (table) => [index('message_conversationId_idx').on(table.conversationId)],
+);
+
+export const rateLimitState = pgTable('rate_limit_state', {
   userId: text('userId')
-    .notNull()
+    .primaryKey()
     .references(() => users.id, { onDelete: 'cascade' }),
-  title: text('title').notNull(),
-  createdAt: timestamp('createdAt', { mode: 'date' }).notNull().defaultNow(),
+  windowStart: timestamp('windowStart', { mode: 'date' }).notNull(),
+  count: integer('count').notNull(),
 });
 
-export const messages = pgTable('message', {
-  id: text('id')
-    .primaryKey()
-    .$defaultFn(() => crypto.randomUUID()),
-  conversationId: text('conversationId')
-    .notNull()
-    .references(() => conversations.id, { onDelete: 'cascade' }),
-  role: messageRoleEnum('role').notNull(),
-  modelId: text('modelId'),
-  content: text('content').notNull(),
-  createdAt: timestamp('createdAt', { mode: 'date' }).notNull().defaultNow(),
-});
+export const usageLog = pgTable(
+  'usage_log',
+  {
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    userId: text('userId')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    modelId: text('modelId').notNull(),
+    inputTokens: integer('inputTokens'),
+    outputTokens: integer('outputTokens'),
+    createdAt: timestamp('createdAt', { mode: 'date' }).notNull().defaultNow(),
+  },
+  (table) => [index('usage_log_userId_idx').on(table.userId)],
+);

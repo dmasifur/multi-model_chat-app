@@ -28,12 +28,30 @@ export async function listConversations(userId: string) {
 }
 
 export async function saveMessage(input: {
+  userId: string;
   conversationId: string;
   role: 'user' | 'assistant';
   modelId: string | null;
   content: string;
 }) {
-  const [message] = await db.insert(messages).values(input).returning();
+  const [owned] = await db
+    .select({ id: conversations.id })
+    .from(conversations)
+    .where(and(eq(conversations.id, input.conversationId), eq(conversations.userId, input.userId)));
+
+  if (!owned) {
+    return null;
+  }
+
+  const [message] = await db
+    .insert(messages)
+    .values({
+      conversationId: input.conversationId,
+      role: input.role,
+      modelId: input.modelId,
+      content: input.content,
+    })
+    .returning();
   return message;
 }
 

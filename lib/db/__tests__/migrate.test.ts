@@ -1,7 +1,15 @@
 import { describe, it, expect } from 'vitest';
 import { client } from '@/lib/db';
+import { isDatabaseReachable } from '@/lib/db/test-helpers';
 
-describe('database migration', () => {
+const reachable = await isDatabaseReachable();
+if (!reachable) {
+  console.warn(
+    '[database migration] Skipping: Postgres is not reachable at DATABASE_URL. Run `docker compose up -d` first.',
+  );
+}
+
+describe.skipIf(!reachable)('database migration', () => {
   it('creates all expected tables in Postgres', async () => {
     const rows = await client<{ table_name: string }[]>`
       select table_name from information_schema.tables
@@ -9,7 +17,15 @@ describe('database migration', () => {
     `;
     const tableNames = rows.map((r) => r.table_name).sort();
     expect(tableNames).toEqual(
-      ['user', 'account', 'session', 'verificationToken', 'conversation', 'message'].sort(),
+      [
+        'user',
+        'account',
+        'verificationToken',
+        'conversation',
+        'message',
+        'rate_limit_state',
+        'usage_log',
+      ].sort(),
     );
   });
 });

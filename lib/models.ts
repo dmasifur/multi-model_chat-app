@@ -49,6 +49,10 @@ function isProviderConfigured(provider: ModelProviderName): boolean {
   }
 }
 
+export function isKnownModelId(id: string): boolean {
+  return MODEL_REGISTRY.some((m) => m.id === id);
+}
+
 export function isModelAvailable(id: string): boolean {
   const definition = MODEL_REGISTRY.find((m) => m.id === id);
   if (!definition) {

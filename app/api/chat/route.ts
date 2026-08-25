@@ -9,6 +9,7 @@ import { auth } from '@/auth';
 import { getModel, isModelAvailable } from '@/lib/models';
 import { chatRequestSchema } from '@/lib/chat/message-schema';
 import { checkRateLimit } from '@/lib/rate-limit';
+import { recordUsage } from '@/lib/usage';
 
 const MAX_OUTPUT_TOKENS = 2048;
 
@@ -39,11 +40,22 @@ export async function POST(req: Request) {
     return new Response('Too many requests', { status: 429 });
   }
 
+  const userId = session.user.id;
   const result = streamText({
     model: getModel(modelId),
     messages: await convertToModelMessages(messages as UIMessage[]),
     maxOutputTokens: MAX_OUTPUT_TOKENS,
     abortSignal: req.signal,
+    onFinish: async ({ usage }) => {
+      await recordUsage({
+        userId,
+        modelId,
+        inputTokens: usage.inputTokens ?? null,
+        outputTokens: usage.outputTokens ?? null,
+      }).catch(() => {
+        // Usage logging is best-effort and must never fail the response.
+      });
+    },
   });
 
   return createUIMessageStreamResponse({

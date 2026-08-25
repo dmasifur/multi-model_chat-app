@@ -20,9 +20,14 @@ vi.mock('@/lib/rate-limit', () => ({
   checkRateLimit: vi.fn(),
 }));
 
+vi.mock('@/lib/usage', () => ({
+  recordUsage: vi.fn(),
+}));
+
 import { auth } from '@/auth';
 import { isModelAvailable, getModel } from '@/lib/models';
 import { checkRateLimit } from '@/lib/rate-limit';
+import { recordUsage } from '@/lib/usage';
 import { POST } from '@/app/api/chat/route';
 
 function userMessage(text: string): UIMessage {
@@ -42,6 +47,8 @@ beforeEach(() => {
   vi.mocked(getModel).mockReset();
   vi.mocked(checkRateLimit).mockReset();
   vi.mocked(checkRateLimit).mockResolvedValue(true);
+  vi.mocked(recordUsage).mockReset();
+  vi.mocked(recordUsage).mockResolvedValue(undefined);
 });
 
 describe('POST /api/chat', () => {
@@ -165,6 +172,47 @@ describe('POST /api/chat', () => {
     const call = vi.mocked(streamText).mock.calls[0][0];
     expect(call.maxOutputTokens).toBe(2048);
     expect(call.abortSignal).toBeInstanceOf(AbortSignal);
+  });
+
+  it('records provider usage once the stream finishes', async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: 'user-1' } } as never);
+    vi.mocked(isModelAvailable).mockReturnValue(true);
+    vi.mocked(getModel).mockReturnValue(
+      new MockLanguageModelV4({
+        doStream: async () => ({
+          stream: simulateReadableStream({
+            chunks: [
+              { type: 'text-start', id: 'text-1' },
+              { type: 'text-delta', id: 'text-1', delta: 'Hello' },
+              { type: 'text-end', id: 'text-1' },
+              {
+                type: 'finish',
+                finishReason: { unified: 'stop', raw: undefined },
+                logprobs: undefined,
+                usage: {
+                  inputTokens: { total: 3, noCache: 3, cacheRead: undefined, cacheWrite: undefined },
+                  outputTokens: { total: 1, text: 1, reasoning: undefined },
+                },
+              },
+            ],
+          }),
+        }),
+      }) as never,
+    );
+
+    const response = await POST(
+      chatRequest({ modelId: 'groq-llama-3.3-70b', messages: [userMessage('hi')] }),
+    );
+    await response.text();
+
+    await vi.waitFor(() => {
+      expect(recordUsage).toHaveBeenCalledWith({
+        userId: 'user-1',
+        modelId: 'groq-llama-3.3-70b',
+        inputTokens: 3,
+        outputTokens: 1,
+      });
+    });
   });
 
   it('returns 400 for a malformed JSON body', async () => {

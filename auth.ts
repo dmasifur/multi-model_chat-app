@@ -15,6 +15,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   }),
   providers: [GitHub, Google],
   session: { strategy: 'jwt' },
+  // Required on any deploy target other than Vercel, which sets this
+  // implicitly. If self-hosting behind a reverse proxy, the proxy must
+  // strip any client-supplied Host/X-Forwarded-Host before this app sees it.
+  trustHost: true,
   callbacks: {
     signIn({ user }) {
       return isEmailAllowed(user.email);

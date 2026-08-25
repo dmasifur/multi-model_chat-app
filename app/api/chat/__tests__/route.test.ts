@@ -126,4 +126,44 @@ describe('POST /api/chat', () => {
 
     expect(response.status).toBe(400);
   });
+
+  it('returns 400 instead of crashing when a message has no parts', async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: 'user-1' } } as never);
+    vi.mocked(isModelAvailable).mockReturnValue(true);
+
+    const response = await POST(
+      chatRequest({ modelId: 'groq-llama-3.3-70b', messages: [{ role: 'user' }] }),
+    );
+
+    expect(response.status).toBe(400);
+  });
+
+  it('returns 400 instead of silently passing when a text part has a non-string text', async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: 'user-1' } } as never);
+    vi.mocked(isModelAvailable).mockReturnValue(true);
+
+    const response = await POST(
+      chatRequest({
+        modelId: 'groq-llama-3.3-70b',
+        messages: [{ id: 'm1', role: 'user', parts: [{ type: 'text', text: 12345 }] }],
+      }),
+    );
+
+    expect(response.status).toBe(400);
+  });
+
+  it('returns 400 for a large number of prior messages that together exceed the conversation budget, even though the last message is short', async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: 'user-1' } } as never);
+    vi.mocked(isModelAvailable).mockReturnValue(true);
+
+    const priorMessages = Array.from({ length: 20 }, () => userMessage('a'.repeat(3000)));
+    const response = await POST(
+      chatRequest({
+        modelId: 'groq-llama-3.3-70b',
+        messages: [...priorMessages, userMessage('hi!')],
+      }),
+    );
+
+    expect(response.status).toBe(400);
+  });
 });

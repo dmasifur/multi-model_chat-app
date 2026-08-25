@@ -7,7 +7,7 @@ import {
 } from 'ai';
 import { auth } from '@/auth';
 import { getModel, isModelAvailable } from '@/lib/models';
-import { exceedsMaxLength } from '@/lib/chat/message-length';
+import { chatRequestSchema } from '@/lib/chat/message-schema';
 
 export async function POST(req: Request) {
   const session = await auth();
@@ -15,30 +15,26 @@ export async function POST(req: Request) {
     return new Response('Unauthorized', { status: 401 });
   }
 
-  let body: { messages?: UIMessage[]; modelId?: string };
+  let json: unknown;
   try {
-    body = (await req.json()) as { messages?: UIMessage[]; modelId?: string };
+    json = await req.json();
   } catch {
     return new Response('Invalid JSON body', { status: 400 });
   }
-  const { messages, modelId } = body;
 
-  if (!modelId || !isModelAvailable(modelId)) {
+  const parsed = chatRequestSchema.safeParse(json);
+  if (!parsed.success) {
+    return new Response('Invalid request body', { status: 400 });
+  }
+  const { messages, modelId } = parsed.data;
+
+  if (!isModelAvailable(modelId)) {
     return new Response('Invalid or unavailable model', { status: 400 });
-  }
-
-  if (!Array.isArray(messages) || messages.length === 0) {
-    return new Response('Messages are required', { status: 400 });
-  }
-
-  const lastMessage = messages[messages.length - 1];
-  if (exceedsMaxLength(lastMessage)) {
-    return new Response('Message too long', { status: 400 });
   }
 
   const result = streamText({
     model: getModel(modelId),
-    messages: await convertToModelMessages(messages),
+    messages: await convertToModelMessages(messages as UIMessage[]),
   });
 
   return createUIMessageStreamResponse({

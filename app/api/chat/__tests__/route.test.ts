@@ -250,6 +250,28 @@ describe('POST /api/chat', () => {
     expect(response.status).toBe(400);
   });
 
+  it('returns 503 instead of crashing when the rate limiter cannot reach the database', async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: 'user-1' } } as never);
+    vi.mocked(isModelAvailable).mockReturnValue(true);
+    vi.mocked(checkRateLimit).mockRejectedValue(new Error('ECONNREFUSED'));
+
+    const response = await POST(
+      chatRequest({ modelId: 'groq-llama-3.3-70b', messages: [userMessage('hi')] }),
+    );
+
+    expect(response.status).toBe(503);
+  });
+
+  it('does not call the provider when the rate limiter is unavailable', async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: 'user-1' } } as never);
+    vi.mocked(isModelAvailable).mockReturnValue(true);
+    vi.mocked(checkRateLimit).mockRejectedValue(new Error('ECONNREFUSED'));
+
+    await POST(chatRequest({ modelId: 'groq-llama-3.3-70b', messages: [userMessage('hi')] }));
+
+    expect(getModel).not.toHaveBeenCalled();
+  });
+
   it('returns 429 when the user has exceeded the rate limit', async () => {
     vi.mocked(auth).mockResolvedValue({ user: { id: 'user-1' } } as never);
     vi.mocked(isModelAvailable).mockReturnValue(true);

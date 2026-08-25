@@ -36,7 +36,15 @@ export async function POST(req: Request) {
     return new Response('Invalid or unavailable model', { status: 400 });
   }
 
-  if (!(await checkRateLimit(session.user.id))) {
+  // Fail closed: if the limiter can't be consulted we refuse the request
+  // rather than let an unmetered call through to a paid provider.
+  let withinRateLimit: boolean;
+  try {
+    withinRateLimit = await checkRateLimit(session.user.id);
+  } catch {
+    return new Response('Rate limiter unavailable', { status: 503 });
+  }
+  if (!withinRateLimit) {
     return new Response('Too many requests', { status: 429 });
   }
 

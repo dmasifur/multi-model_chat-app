@@ -88,10 +88,23 @@ describe('POST /api/conversations/[id]/messages', () => {
 
     expect(res.status).toBe(201);
     expect(saveMessage).toHaveBeenCalledWith({
+      userId: 'user-1',
       conversationId: 'c1',
       role: 'assistant',
       modelId: 'groq-llama-3.3-70b',
       content: 'Hi',
     });
+  });
+
+  it('returns 404 when saveMessage finds the conversation is not owned by the caller', async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: 'user-1' } } as never);
+    vi.mocked(getConversationWithMessages).mockResolvedValue({ id: 'c1' } as never);
+    vi.mocked(saveMessage).mockResolvedValue(null);
+
+    const res = await POST(req({ role: 'user', content: 'hi' }), {
+      params: Promise.resolve({ id: 'c1' }),
+    });
+
+    expect(res.status).toBe(404);
   });
 });

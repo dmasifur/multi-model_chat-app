@@ -40,18 +40,21 @@ describe('conversation persistence (live Postgres)', () => {
     const conversation = await createConversation(user.id, 'Compare models');
 
     await saveMessage({
+      userId: user.id,
       conversationId: conversation.id,
       role: 'user',
       modelId: null,
       content: 'Hello',
     });
     await saveMessage({
+      userId: user.id,
       conversationId: conversation.id,
       role: 'assistant',
       modelId: 'groq-llama-3.3-70b',
       content: 'Hi from Groq',
     });
     await saveMessage({
+      userId: user.id,
       conversationId: conversation.id,
       role: 'assistant',
       modelId: 'ollama-llama-3.1',
@@ -75,6 +78,24 @@ describe('conversation persistence (live Postgres)', () => {
     const conversation = await createConversation(owner.id, 'Private');
     const loaded = await getConversationWithMessages(stranger.id, conversation.id);
     expect(loaded).toBeNull();
+  });
+
+  it('refuses to save a message when the given userId does not own the conversation', async () => {
+    const owner = await makeTestUser();
+    const stranger = await makeTestUser();
+    const conversation = await createConversation(owner.id, 'Private');
+
+    const result = await saveMessage({
+      userId: stranger.id,
+      conversationId: conversation.id,
+      role: 'user',
+      modelId: null,
+      content: 'Should not be written',
+    });
+
+    expect(result).toBeNull();
+    const loaded = await getConversationWithMessages(owner.id, conversation.id);
+    expect(loaded?.messages).toHaveLength(0);
   });
 });
 

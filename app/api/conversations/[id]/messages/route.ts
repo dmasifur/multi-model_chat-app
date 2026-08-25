@@ -38,11 +38,15 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   }
 
   const message = await saveMessage({
+    userId: session.user.id,
     conversationId: id,
     role: parsed.data.role,
     modelId: parsed.data.modelId ?? null,
     content: parsed.data.content,
   });
+  if (!message) {
+    return new Response('Not found', { status: 404 });
+  }
 
   return Response.json(message, { status: 201 });
 }

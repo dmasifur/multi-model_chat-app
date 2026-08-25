@@ -36,6 +36,29 @@ describe('POST /api/conversations', () => {
     expect(res.status).toBe(400);
   });
 
+  it('returns 400 for a malformed JSON body instead of crashing', async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: 'user-1' } } as never);
+    const res = await POST(
+      new Request('http://localhost/api/conversations', {
+        method: 'POST',
+        body: 'not valid json',
+      }),
+    );
+    expect(res.status).toBe(400);
+  });
+
+  it('returns 400 for a title over 200 characters', async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: 'user-1' } } as never);
+    const res = await POST(
+      new Request('http://localhost/api/conversations', {
+        method: 'POST',
+        body: JSON.stringify({ title: 'a'.repeat(201) }),
+      }),
+    );
+    expect(res.status).toBe(400);
+    expect(createConversation).not.toHaveBeenCalled();
+  });
+
   it('creates a conversation for the authed user', async () => {
     vi.mocked(auth).mockResolvedValue({ user: { id: 'user-1' } } as never);
     vi.mocked(createConversation).mockResolvedValue({

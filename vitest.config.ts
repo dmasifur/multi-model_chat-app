@@ -15,6 +15,12 @@ export default defineConfig({
         inline: ['next-auth', '@auth/drizzle-adapter', 'next'],
       },
     },
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'html'],
+      include: ['app/**', 'lib/**', 'components/**'],
+      exclude: ['**/__tests__/**', '**/*.test.{ts,tsx}', 'lib/test/**'],
+    },
   },
   resolve: {
     alias: {

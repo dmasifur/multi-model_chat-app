@@ -12,6 +12,7 @@
     "format:check": "prettier --check .",
     "test": "bun --env-file=.env.test run vitest run",
     "test:watch": "bun --env-file=.env.test run vitest",
+    "test:coverage": "bun --env-file=.env.test run vitest run --coverage",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate"
   },
@@ -38,6 +39,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^6.1.0",
+    "@vitest/coverage-v8": "^4.1.11",
     "drizzle-kit": "^0.31.10",
     "eslint": "^9",
     "eslint-config-next": "16.3.2",

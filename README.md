@@ -21,10 +21,13 @@ an email allowlist, with a per-user rate limit on chat requests.
 ```bash
 bun install
 cp .env.example .env           # then fill it in — see below
-docker compose up -d           # Postgres 16 on :5432
-bun run db:migrate             # create the schema
+docker compose up -d           # Postgres 16 on :5432; also creates chatapp_test
+bun run db:migrate             # create the schema in chatapp (dev)
 bun run dev                    # http://localhost:3000
 ```
+
+Running the test suite's live-Postgres tests also needs the schema in `chatapp_test`:
+`bun --env-file=.env.test run db:migrate`.
 
 Fill in `.env` before anything else. Two variables throw at import if unset, so the app
 will not boot without them: `DATABASE_URL` (`lib/db/index.ts`) and `AUTH_SECRET`
@@ -100,12 +103,21 @@ in scope, whatever is on disk.
 themselves with a warning when it is unreachable, so `bun run test` passes without
 Docker running — just with less coverage than CI. Bring the container up to run them.
 
-`.env.test` points `DATABASE_URL` at the same local `chatapp` database as development,
-and the migration test asserts the _exact_ set of tables. A database left over from
-another branch will fail it. Reset:
+`.env.test` points `DATABASE_URL` at a separate `chatapp_test` database, not your dev
+`chatapp` one — `docker-compose.yml` creates both on first `docker compose up -d` (see
+`docker/postgres-init/`), so tests never write rows into the database you're developing
+against. `migrate.test.ts` asserts the _exact_ set of tables in whichever database it
+targets. Reset either one:
 
 ```bash
-docker compose down -v && docker compose up -d && bun run db:migrate
+# dev database
+bun run db:migrate
+
+# test database
+bun --env-file=.env.test run db:migrate
+
+# or start over entirely (wipes both, re-runs the init script)
+docker compose down -v && docker compose up -d && bun run db:migrate && bun --env-file=.env.test run db:migrate
 ```
 
 ## Schema changes
@@ -115,5 +127,6 @@ are applied from `drizzle/`, never inferred from the schema at runtime.
 
 ```bash
 bun run db:generate
-bun run db:migrate
+bun run db:migrate                          # dev database
+bun --env-file=.env.test run db:migrate     # test database
 ```

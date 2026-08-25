@@ -1,3 +1,4 @@
+import 'server-only';
 import type { LanguageModel } from 'ai';
 import { createGroq } from '@ai-sdk/groq';
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';

@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { randomUUID } from 'node:crypto';
 import { db } from '@/lib/db';
 import { users } from '@/lib/db/schema';
+import { isDatabaseReachable } from '@/lib/db/test-helpers';
 import {
   createConversation,
   listConversations,
@@ -19,7 +20,14 @@ async function makeTestUser() {
   return user;
 }
 
-describe('conversation persistence (live Postgres)', () => {
+const reachable = await isDatabaseReachable();
+if (!reachable) {
+  console.warn(
+    '[conversation persistence] Skipping: Postgres is not reachable at DATABASE_URL. Run `docker compose up -d` first.',
+  );
+}
+
+describe.skipIf(!reachable)('conversation persistence (live Postgres)', () => {
   it('creates a conversation owned by the given user', async () => {
     const user = await makeTestUser();
     const conversation = await createConversation(user.id, 'My first chat');

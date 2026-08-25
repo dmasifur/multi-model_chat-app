@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 import { db } from '@/lib/db';
 import { users, usageLog } from '@/lib/db/schema';
+import { isDatabaseReachable } from '@/lib/db/test-helpers';
 import { recordUsage } from '@/lib/usage';
 
 async function makeTestUser() {
@@ -13,7 +14,14 @@ async function makeTestUser() {
   return user;
 }
 
-describe('recordUsage (live Postgres)', () => {
+const reachable = await isDatabaseReachable();
+if (!reachable) {
+  console.warn(
+    '[recordUsage] Skipping: Postgres is not reachable at DATABASE_URL. Run `docker compose up -d` first.',
+  );
+}
+
+describe.skipIf(!reachable)('recordUsage (live Postgres)', () => {
   it('persists a usage row with token counts', async () => {
     const user = await makeTestUser();
 

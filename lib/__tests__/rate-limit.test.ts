@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { randomUUID } from 'node:crypto';
 import { db } from '@/lib/db';
 import { users } from '@/lib/db/schema';
+import { isDatabaseReachable } from '@/lib/db/test-helpers';
 import { checkRateLimit } from '@/lib/rate-limit';
 
 async function makeTestUser() {
@@ -12,7 +13,14 @@ async function makeTestUser() {
   return user;
 }
 
-describe('checkRateLimit (live Postgres)', () => {
+const reachable = await isDatabaseReachable();
+if (!reachable) {
+  console.warn(
+    '[checkRateLimit] Skipping: Postgres is not reachable at DATABASE_URL. Run `docker compose up -d` first.',
+  );
+}
+
+describe.skipIf(!reachable)('checkRateLimit (live Postgres)', () => {
   it('allows the first request in a new window', async () => {
     const user = await makeTestUser();
     const allowed = await checkRateLimit(user.id, { windowMs: 60_000, max: 3 });

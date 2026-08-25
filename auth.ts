@@ -4,7 +4,7 @@ import Google from 'next-auth/providers/google';
 import { DrizzleAdapter } from '@auth/drizzle-adapter';
 import { db } from '@/lib/db';
 import { users, accounts, sessions, verificationTokens } from '@/lib/db/schema';
-import { isEmailAllowed } from '@/lib/auth/allowlist';
+import { signInCallback, jwtCallback } from '@/lib/auth/callbacks';
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: DrizzleAdapter(db, {
@@ -20,15 +20,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   // strip any client-supplied Host/X-Forwarded-Host before this app sees it.
   trustHost: true,
   callbacks: {
-    signIn({ user }) {
-      return isEmailAllowed(user.email);
-    },
-    jwt({ token, user }) {
-      if (user) {
-        token.id = user.id;
-      }
-      return token;
-    },
+    signIn: signInCallback,
+    jwt: jwtCallback,
     session({ session, token }) {
       if (session.user) {
         session.user.id = token.id as string;

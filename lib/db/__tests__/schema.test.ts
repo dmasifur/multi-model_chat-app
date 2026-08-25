@@ -99,4 +99,11 @@ describe('app tables', () => {
     expect(getTableColumns(usageLog).inputTokens.notNull).toBe(false);
     expect(getTableColumns(usageLog).outputTokens.notNull).toBe(false);
   });
+
+  it('usageLog table has an index on userId', () => {
+    const indexes = getTableConfig(usageLog).indexes;
+    expect(
+      indexes.some((idx) => idx.config.columns.some((c) => 'name' in c && c.name === 'userId')),
+    ).toBe(true);
+  });
 });

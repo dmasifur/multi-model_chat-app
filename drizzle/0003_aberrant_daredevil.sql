@@ -1,0 +1,1 @@
+CREATE INDEX "usage_log_userId_idx" ON "usage_log" USING btree ("userId");

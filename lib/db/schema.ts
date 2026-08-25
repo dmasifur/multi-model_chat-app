@@ -94,15 +94,19 @@ export const rateLimitState = pgTable('rate_limit_state', {
   count: integer('count').notNull(),
 });
 
-export const usageLog = pgTable('usage_log', {
-  id: text('id')
-    .primaryKey()
-    .$defaultFn(() => crypto.randomUUID()),
-  userId: text('userId')
-    .notNull()
-    .references(() => users.id, { onDelete: 'cascade' }),
-  modelId: text('modelId').notNull(),
-  inputTokens: integer('inputTokens'),
-  outputTokens: integer('outputTokens'),
-  createdAt: timestamp('createdAt', { mode: 'date' }).notNull().defaultNow(),
-});
+export const usageLog = pgTable(
+  'usage_log',
+  {
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    userId: text('userId')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    modelId: text('modelId').notNull(),
+    inputTokens: integer('inputTokens'),
+    outputTokens: integer('outputTokens'),
+    createdAt: timestamp('createdAt', { mode: 'date' }).notNull().defaultNow(),
+  },
+  (table) => [index('usage_log_userId_idx').on(table.userId)],
+);

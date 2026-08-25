@@ -15,6 +15,13 @@
       "when": 1787661098923,
       "tag": "0001_blue_wildside",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1787662891624,
+      "tag": "0002_romantic_hulk",
+      "breakpoints": true
     }
   ]
 }

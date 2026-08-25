@@ -1,4 +1,4 @@
-import { text, timestamp, integer, pgTable, primaryKey, pgEnum } from 'drizzle-orm/pg-core';
+import { text, timestamp, integer, pgTable, primaryKey, pgEnum, index } from 'drizzle-orm/pg-core';
 
 export const users = pgTable('user', {
   id: text('id')
@@ -54,29 +54,37 @@ export const verificationTokens = pgTable(
 
 export const messageRoleEnum = pgEnum('message_role', ['user', 'assistant']);
 
-export const conversations = pgTable('conversation', {
-  id: text('id')
-    .primaryKey()
-    .$defaultFn(() => crypto.randomUUID()),
-  userId: text('userId')
-    .notNull()
-    .references(() => users.id, { onDelete: 'cascade' }),
-  title: text('title').notNull(),
-  createdAt: timestamp('createdAt', { mode: 'date' }).notNull().defaultNow(),
-});
+export const conversations = pgTable(
+  'conversation',
+  {
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    userId: text('userId')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    title: text('title').notNull(),
+    createdAt: timestamp('createdAt', { mode: 'date' }).notNull().defaultNow(),
+  },
+  (table) => [index('conversation_userId_idx').on(table.userId)],
+);
 
-export const messages = pgTable('message', {
-  id: text('id')
-    .primaryKey()
-    .$defaultFn(() => crypto.randomUUID()),
-  conversationId: text('conversationId')
-    .notNull()
-    .references(() => conversations.id, { onDelete: 'cascade' }),
-  role: messageRoleEnum('role').notNull(),
-  modelId: text('modelId'),
-  content: text('content').notNull(),
-  createdAt: timestamp('createdAt', { mode: 'date' }).notNull().defaultNow(),
-});
+export const messages = pgTable(
+  'message',
+  {
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    conversationId: text('conversationId')
+      .notNull()
+      .references(() => conversations.id, { onDelete: 'cascade' }),
+    role: messageRoleEnum('role').notNull(),
+    modelId: text('modelId'),
+    content: text('content').notNull(),
+    createdAt: timestamp('createdAt', { mode: 'date' }).notNull().defaultNow(),
+  },
+  (table) => [index('message_conversationId_idx').on(table.conversationId)],
+);
 
 export const rateLimitState = pgTable('rate_limit_state', {
   userId: text('userId')

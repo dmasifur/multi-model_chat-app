@@ -59,6 +59,12 @@ describe('app tables', () => {
     );
   });
 
+  it('conversations table has an index on userId', () => {
+    const indexes = getTableConfig(conversations).indexes;
+    expect(indexes.some((idx) => idx.config.columns.some((c) => 'name' in c && c.name === 'userId')))
+      .toBe(true);
+  });
+
   it('messages table has the expected name and columns, with modelId nullable', () => {
     expect(getTableConfig(messages).name).toBe('message');
     expect(Object.keys(getTableColumns(messages)).sort()).toEqual(
@@ -66,6 +72,15 @@ describe('app tables', () => {
     );
     expect(getTableColumns(messages).modelId.notNull).toBe(false);
     expect(getTableColumns(messages).content.notNull).toBe(true);
+  });
+
+  it('messages table has an index on conversationId', () => {
+    const indexes = getTableConfig(messages).indexes;
+    expect(
+      indexes.some((idx) =>
+        idx.config.columns.some((c) => 'name' in c && c.name === 'conversationId'),
+      ),
+    ).toBe(true);
   });
 
   it('rateLimitState table has the expected name, columns, and userId primary key', () => {

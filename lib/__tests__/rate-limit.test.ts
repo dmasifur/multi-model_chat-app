@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { randomUUID } from 'node:crypto';
+import { and, eq } from 'drizzle-orm';
 import { db } from '@/lib/db';
-import { users } from '@/lib/db/schema';
+import { users, rateLimitState } from '@/lib/db/schema';
 import { isDatabaseReachable } from '@/lib/db/test-helpers';
 import { checkRateLimit } from '@/lib/rate-limit';
 
@@ -39,12 +40,18 @@ describe.skipIf(!reachable)('checkRateLimit (live Postgres)', () => {
 
   it('resets the count once the window has elapsed', async () => {
     const user = await makeTestUser();
-    const opts = { windowMs: 10, max: 1 };
+    const opts = { windowMs: 60_000, max: 1 };
 
     expect(await checkRateLimit(user.id, opts)).toBe(true);
     expect(await checkRateLimit(user.id, opts)).toBe(false);
 
-    await new Promise((resolve) => setTimeout(resolve, 20));
+    // Back-date the stored window instead of sleeping through a real one.
+    // A short window raced the clock: two round trips could outlast it, so
+    // the second call above would reset the counter and wrongly return true.
+    await db
+      .update(rateLimitState)
+      .set({ windowStart: new Date(Date.now() - 120_000) })
+      .where(and(eq(rateLimitState.userId, user.id), eq(rateLimitState.bucket, 'chat')));
 
     expect(await checkRateLimit(user.id, opts)).toBe(true);
   });
@@ -57,5 +64,26 @@ describe.skipIf(!reachable)('checkRateLimit (live Postgres)', () => {
     expect(await checkRateLimit(userA.id, opts)).toBe(true);
     expect(await checkRateLimit(userA.id, opts)).toBe(false);
     expect(await checkRateLimit(userB.id, opts)).toBe(true);
+  });
+});
+
+describe.skipIf(!reachable)('checkRateLimit bucket isolation (live Postgres)', () => {
+  it("does not let one bucket consume another bucket's budget", async () => {
+    const user = await makeTestUser();
+    const chat = { windowMs: 60_000, max: 1, bucket: 'chat' };
+    const write = { windowMs: 60_000, max: 1, bucket: 'write' };
+
+    expect(await checkRateLimit(user.id, chat)).toBe(true);
+    expect(await checkRateLimit(user.id, chat)).toBe(false);
+
+    // The chat bucket is exhausted; the write bucket must still be untouched.
+    expect(await checkRateLimit(user.id, write)).toBe(true);
+    expect(await checkRateLimit(user.id, write)).toBe(false);
+  });
+
+  it('defaults to the chat bucket when none is given', async () => {
+    const user = await makeTestUser();
+    expect(await checkRateLimit(user.id, { windowMs: 60_000, max: 1 })).toBe(true);
+    expect(await checkRateLimit(user.id, { windowMs: 60_000, max: 1, bucket: 'chat' })).toBe(false);
   });
 });

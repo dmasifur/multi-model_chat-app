@@ -6,6 +6,12 @@ import { db } from '@/lib/db';
 import { users, accounts, sessions, verificationTokens } from '@/lib/db/schema';
 import { signInCallback, jwtCallback } from '@/lib/auth/callbacks';
 
+if (!process.env.AUTH_SECRET) {
+  throw new Error(
+    'AUTH_SECRET is not set. Generate one with `openssl rand -base64 33` and add it to .env.',
+  );
+}
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: DrizzleAdapter(db, {
     usersTable: users,

@@ -77,3 +77,24 @@ export const messages = pgTable('message', {
   content: text('content').notNull(),
   createdAt: timestamp('createdAt', { mode: 'date' }).notNull().defaultNow(),
 });
+
+export const rateLimitState = pgTable('rate_limit_state', {
+  userId: text('userId')
+    .primaryKey()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  windowStart: timestamp('windowStart', { mode: 'date' }).notNull(),
+  count: integer('count').notNull(),
+});
+
+export const usageLog = pgTable('usage_log', {
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  userId: text('userId')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  modelId: text('modelId').notNull(),
+  inputTokens: integer('inputTokens'),
+  outputTokens: integer('outputTokens'),
+  createdAt: timestamp('createdAt', { mode: 'date' }).notNull().defaultNow(),
+});

@@ -9,7 +9,16 @@ describe('database migration', () => {
     `;
     const tableNames = rows.map((r) => r.table_name).sort();
     expect(tableNames).toEqual(
-      ['user', 'account', 'session', 'verificationToken', 'conversation', 'message'].sort(),
+      [
+        'user',
+        'account',
+        'session',
+        'verificationToken',
+        'conversation',
+        'message',
+        'rate_limit_state',
+        'usage_log',
+      ].sort(),
     );
   });
 });

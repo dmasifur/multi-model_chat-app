@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { getTableColumns } from 'drizzle-orm';
 import { getTableConfig } from 'drizzle-orm/pg-core';
 import { users, accounts, sessions, verificationTokens } from '@/lib/db/schema';
-import { conversations, messages } from '@/lib/db/schema';
+import { conversations, messages, rateLimitState, usageLog } from '@/lib/db/schema';
 
 describe('auth.js adapter tables', () => {
   it('users table has the expected name and columns', () => {
@@ -66,5 +66,22 @@ describe('app tables', () => {
     );
     expect(getTableColumns(messages).modelId.notNull).toBe(false);
     expect(getTableColumns(messages).content.notNull).toBe(true);
+  });
+
+  it('rateLimitState table has the expected name, columns, and userId primary key', () => {
+    expect(getTableConfig(rateLimitState).name).toBe('rate_limit_state');
+    expect(Object.keys(getTableColumns(rateLimitState)).sort()).toEqual(
+      ['userId', 'windowStart', 'count'].sort(),
+    );
+    expect(getTableColumns(rateLimitState).userId.primary).toBe(true);
+  });
+
+  it('usageLog table has the expected name and columns, with token counts nullable', () => {
+    expect(getTableConfig(usageLog).name).toBe('usage_log');
+    expect(Object.keys(getTableColumns(usageLog)).sort()).toEqual(
+      ['id', 'userId', 'modelId', 'inputTokens', 'outputTokens', 'createdAt'].sort(),
+    );
+    expect(getTableColumns(usageLog).inputTokens.notNull).toBe(false);
+    expect(getTableColumns(usageLog).outputTokens.notNull).toBe(false);
   });
 });

@@ -1,6 +1,5 @@
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
-import { loadEnv } from 'vite';
 import { resolve } from 'node:path';
 
 export default defineConfig({
@@ -8,7 +7,9 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     globals: true,
-    env: loadEnv('', process.cwd(), ''),
+    // Env vars come from `bun --env-file=.env.test` (see package.json's test
+    // script), not from loading a file here, so the test process never has
+    // the real .env's secrets in scope regardless of what's on disk.
     server: {
       deps: {
         inline: ['next-auth', '@auth/drizzle-adapter', 'next'],

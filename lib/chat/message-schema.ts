@@ -33,14 +33,21 @@ export const chatRequestSchema = z
   })
   .superRefine((data, ctx) => {
     let total = 0;
+    const lastIndex = data.messages.length - 1;
     for (const [index, message] of data.messages.entries()) {
       // Safe: uiMessageSchema above validates that every 'text' part has a string `text`.
       const length = getMessageTextLength(message as UIMessage);
       total += length;
-      if (length > MAX_MESSAGE_LENGTH) {
+      // The per-message cap is a limit on what a user can type in one turn, so
+      // it applies only to the newly-sent message (always last: useChat appends
+      // before posting). Applying it to the whole history would also reject
+      // assistant replies, which run up to MAX_OUTPUT_TOKENS and can legitimately
+      // exceed MAX_MESSAGE_LENGTH - that would permanently break a column the
+      // first time a model produced one long reply.
+      if (index === lastIndex && length > MAX_MESSAGE_LENGTH) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: `Message ${index} exceeds ${MAX_MESSAGE_LENGTH} characters`,
+          message: `Message exceeds ${MAX_MESSAGE_LENGTH} characters`,
           path: ['messages', index],
         });
       }

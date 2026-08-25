@@ -23,6 +23,7 @@ export function ChatPage({
   });
   const [conversationId, setConversationId] = useState<string | undefined>(initialConversationId);
   const [input, setInput] = useState('');
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const columnRefs = useRef<Record<string, ChatColumnHandle | null>>({});
 
   if (allModels.length === 0) {
@@ -45,6 +46,7 @@ export function ChatPage({
     if (!trimmed || selectedModelIds.length === 0) {
       return;
     }
+    setSubmitError(null);
 
     let activeConversationId = conversationId;
     if (!activeConversationId) {
@@ -53,16 +55,27 @@ export function ChatPage({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title: trimmed }),
       });
+      // A non-2xx body here is plain text (401/429/503, see the route), not
+      // JSON - parsing it as JSON would throw. Stop before sending anything
+      // to a model and leave the input intact so the user can retry.
+      if (!response.ok) {
+        setSubmitError('Could not start a new conversation. Please try again.');
+        return;
+      }
       const conversation = (await response.json()) as { id: string };
       activeConversationId = conversation.id;
       setConversationId(activeConversationId);
     }
 
-    await fetch(`/api/conversations/${activeConversationId}/messages`, {
+    const messageResponse = await fetch(`/api/conversations/${activeConversationId}/messages`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ role: 'user', modelId: null, content: trimmed }),
     });
+    if (!messageResponse.ok) {
+      setSubmitError('Could not save your message. Please try again.');
+      return;
+    }
 
     for (const modelId of selectedModelIds) {
       columnRefs.current[modelId]?.sendMessage(trimmed, activeConversationId);
@@ -118,6 +131,11 @@ export function ChatPage({
           );
         })}
       </div>
+      {submitError && (
+        <p className="rounded border border-red-300 bg-red-50 p-2 text-sm text-red-700">
+          {submitError}
+        </p>
+      )}
       <form onSubmit={handleSubmit} className="flex gap-2">
         <input
           value={input}

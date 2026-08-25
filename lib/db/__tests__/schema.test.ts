@@ -77,12 +77,16 @@ describe('app tables', () => {
     ).toBe(true);
   });
 
-  it('rateLimitState table has the expected name, columns, and userId primary key', () => {
+  it('rateLimitState table has the expected name and columns', () => {
     expect(getTableConfig(rateLimitState).name).toBe('rate_limit_state');
     expect(Object.keys(getTableColumns(rateLimitState)).sort()).toEqual(
-      ['userId', 'windowStart', 'count'].sort(),
+      ['userId', 'bucket', 'windowStart', 'count'].sort(),
     );
-    expect(getTableColumns(rateLimitState).userId.primary).toBe(true);
+  });
+
+  it('rateLimitState is keyed on (userId, bucket) so buckets cannot drain each other', () => {
+    const [pk] = getTableConfig(rateLimitState).primaryKeys;
+    expect(pk.columns.map((c) => c.name)).toEqual(['userId', 'bucket']);
   });
 
   it('usageLog table has the expected name and columns, with token counts nullable', () => {

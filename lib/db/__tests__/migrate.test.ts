@@ -20,7 +20,6 @@ describe.skipIf(!reachable)('database migration', () => {
       [
         'user',
         'account',
-        'session',
         'verificationToken',
         'conversation',
         'message',

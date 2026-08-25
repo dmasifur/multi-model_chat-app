@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { getTableColumns } from 'drizzle-orm';
 import { getTableConfig } from 'drizzle-orm/pg-core';
-import { users, accounts, sessions, verificationTokens } from '@/lib/db/schema';
+import { users, accounts, verificationTokens } from '@/lib/db/schema';
 import { conversations, messages, rateLimitState, usageLog } from '@/lib/db/schema';
 
 describe('auth.js adapter tables', () => {
@@ -32,13 +32,6 @@ describe('auth.js adapter tables', () => {
     );
     expect(config.primaryKeys[0]?.columns.map((c) => c.name).sort()).toEqual(
       ['provider', 'providerAccountId'].sort(),
-    );
-  });
-
-  it('sessions table has the expected name and columns', () => {
-    expect(getTableConfig(sessions).name).toBe('session');
-    expect(Object.keys(getTableColumns(sessions)).sort()).toEqual(
-      ['sessionToken', 'userId', 'expires'].sort(),
     );
   });
 

@@ -54,8 +54,9 @@ describe('app tables', () => {
 
   it('conversations table has an index on userId', () => {
     const indexes = getTableConfig(conversations).indexes;
-    expect(indexes.some((idx) => idx.config.columns.some((c) => 'name' in c && c.name === 'userId')))
-      .toBe(true);
+    expect(
+      indexes.some((idx) => idx.config.columns.some((c) => 'name' in c && c.name === 'userId')),
+    ).toBe(true);
   });
 
   it('messages table has the expected name and columns, with modelId nullable', () => {

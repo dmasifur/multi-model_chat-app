@@ -70,7 +70,9 @@ describe('chatRequestSchema', () => {
     const perMessage = Math.ceil(MAX_TOTAL_MESSAGE_LENGTH / messageCount) + 100;
     expect(perMessage).toBeLessThan(MAX_MESSAGE_LENGTH);
 
-    const messages = Array.from({ length: messageCount }, () => userMessage('a'.repeat(perMessage)));
+    const messages = Array.from({ length: messageCount }, () =>
+      userMessage('a'.repeat(perMessage)),
+    );
     const result = chatRequestSchema.safeParse({ modelId: 'groq-llama-3.3-70b', messages });
     expect(result.success).toBe(false);
   });

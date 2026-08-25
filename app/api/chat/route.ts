@@ -8,6 +8,9 @@ import {
 import { auth } from '@/auth';
 import { getModel, isModelAvailable } from '@/lib/models';
 import { chatRequestSchema } from '@/lib/chat/message-schema';
+import { checkRateLimit } from '@/lib/rate-limit';
+
+const MAX_OUTPUT_TOKENS = 2048;
 
 export async function POST(req: Request) {
   const session = await auth();
@@ -32,9 +35,15 @@ export async function POST(req: Request) {
     return new Response('Invalid or unavailable model', { status: 400 });
   }
 
+  if (!(await checkRateLimit(session.user.id))) {
+    return new Response('Too many requests', { status: 429 });
+  }
+
   const result = streamText({
     model: getModel(modelId),
     messages: await convertToModelMessages(messages as UIMessage[]),
+    maxOutputTokens: MAX_OUTPUT_TOKENS,
+    abortSignal: req.signal,
   });
 
   return createUIMessageStreamResponse({

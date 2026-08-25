@@ -64,6 +64,20 @@ export async function POST(req: Request) {
         // Usage logging is best-effort and must never fail the response.
       });
     },
+    // onFinish never fires on a client-initiated abort. The provider may
+    // still have billed for tokens generated before the abort, but the SDK
+    // has no usage figure to give us for an incomplete step - this at least
+    // records that an aborted request happened, for abuse-pattern auditing.
+    onAbort: async () => {
+      await recordUsage({
+        userId,
+        modelId,
+        inputTokens: null,
+        outputTokens: null,
+      }).catch(() => {
+        // Usage logging is best-effort and must never fail the response.
+      });
+    },
   });
 
   return createUIMessageStreamResponse({

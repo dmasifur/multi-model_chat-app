@@ -215,6 +215,56 @@ describe('POST /api/chat', () => {
     });
   });
 
+  it('logs a null-usage row when the client aborts before the stream finishes', async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: 'user-1' } } as never);
+    vi.mocked(isModelAvailable).mockReturnValue(true);
+    vi.mocked(getModel).mockReturnValue(
+      new MockLanguageModelV4({
+        doStream: async () => ({
+          stream: simulateReadableStream({
+            chunkDelayInMs: 20,
+            chunks: [
+              { type: 'text-start', id: 'text-1' },
+              { type: 'text-delta', id: 'text-1', delta: 'Hello' },
+              { type: 'text-delta', id: 'text-1', delta: ' world' },
+              { type: 'text-end', id: 'text-1' },
+              {
+                type: 'finish',
+                finishReason: { unified: 'stop', raw: undefined },
+                logprobs: undefined,
+                usage: {
+                  inputTokens: { total: 3, noCache: 3, cacheRead: undefined, cacheWrite: undefined },
+                  outputTokens: { total: 2, text: 2, reasoning: undefined },
+                },
+              },
+            ],
+          }),
+        }),
+      }) as never,
+    );
+
+    const controller = new AbortController();
+    const request = new Request('http://localhost/api/chat', {
+      method: 'POST',
+      body: JSON.stringify({ modelId: 'groq-llama-3.3-70b', messages: [userMessage('hi')] }),
+      signal: controller.signal,
+    });
+
+    const response = await POST(request);
+    const reader = response.body!.getReader();
+    await reader.read();
+    controller.abort();
+
+    await vi.waitFor(() => {
+      expect(recordUsage).toHaveBeenCalledWith({
+        userId: 'user-1',
+        modelId: 'groq-llama-3.3-70b',
+        inputTokens: null,
+        outputTokens: null,
+      });
+    });
+  });
+
   it('returns 400 for a malformed JSON body', async () => {
     vi.mocked(auth).mockResolvedValue({ user: { id: 'user-1' } } as never);
 

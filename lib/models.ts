@@ -17,17 +17,17 @@ export interface ModelDefinition {
 
 export const MODEL_REGISTRY: ModelDefinition[] = [
   {
-    id: 'groq-llama-3.3-70b',
-    label: 'Llama 3.3 70B (Groq)',
+    id: 'groq-model',
+    label: 'GPT-OSS 120B (Groq)',
     provider: 'groq',
-    providerModelId: 'llama-3.3-70b-versatile',
+    providerModelId: 'openai/gpt-oss-120b',
     kind: 'hosted',
   },
   {
-    id: 'openrouter-llama-3.3-70b-free',
-    label: 'Llama 3.3 70B Free (OpenRouter)',
+    id: 'openrouter-free',
+    label: 'Free Auto-Router (OpenRouter)',
     provider: 'openrouter',
-    providerModelId: 'meta-llama/llama-3.3-70b-instruct:free',
+    providerModelId: 'openrouter/free',
     kind: 'hosted',
   },
   {

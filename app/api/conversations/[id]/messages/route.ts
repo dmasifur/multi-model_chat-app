@@ -3,6 +3,7 @@ import { auth } from '@/auth';
 import { saveMessage } from '@/lib/conversations';
 import { isKnownModelId } from '@/lib/models';
 import { MAX_MESSAGE_LENGTH } from '@/lib/chat/message-length';
+import { checkRateLimit, DEFAULT_WRITE_RATE_LIMIT } from '@/lib/rate-limit';
 
 const createMessageSchema = z.object({
   role: z.enum(['user', 'assistant']),
@@ -31,6 +32,16 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const parsed = createMessageSchema.safeParse(json);
   if (!parsed.success) {
     return new Response('Invalid message', { status: 400 });
+  }
+
+  let withinRateLimit: boolean;
+  try {
+    withinRateLimit = await checkRateLimit(session.user.id, DEFAULT_WRITE_RATE_LIMIT);
+  } catch {
+    return new Response('Rate limiter unavailable', { status: 503 });
+  }
+  if (!withinRateLimit) {
+    return new Response('Too many requests', { status: 429 });
   }
 
   const message = await saveMessage({

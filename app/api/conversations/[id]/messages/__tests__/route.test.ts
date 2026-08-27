@@ -5,9 +5,14 @@ vi.mock('@/lib/conversations', () => ({
   getConversationWithMessages: vi.fn(),
   saveMessage: vi.fn(),
 }));
+vi.mock('@/lib/rate-limit', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/rate-limit')>();
+  return { ...actual, checkRateLimit: vi.fn() };
+});
 
 import { auth } from '@/auth';
 import { getConversationWithMessages, saveMessage } from '@/lib/conversations';
+import { checkRateLimit } from '@/lib/rate-limit';
 import { POST } from '@/app/api/conversations/[id]/messages/route';
 
 function req(body: unknown) {
@@ -18,6 +23,8 @@ beforeEach(() => {
   vi.mocked(auth).mockReset();
   vi.mocked(getConversationWithMessages).mockReset();
   vi.mocked(saveMessage).mockReset();
+  vi.mocked(checkRateLimit).mockReset();
+  vi.mocked(checkRateLimit).mockResolvedValue(true);
 });
 
 describe('POST /api/conversations/[id]/messages', () => {
@@ -99,5 +106,36 @@ describe('POST /api/conversations/[id]/messages', () => {
     await POST(req({ role: 'user', content: 'hi' }), { params: Promise.resolve({ id: 'c1' }) });
 
     expect(getConversationWithMessages).not.toHaveBeenCalled();
+  });
+});
+
+describe('POST /api/conversations/[id]/messages rate limiting', () => {
+  const params = Promise.resolve({ id: 'c-1' });
+  const validBody = { role: 'user', modelId: null, content: 'hello' };
+
+  it('returns 429 once the write limit is exceeded, without saving', async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: 'user-1' } } as never);
+    vi.mocked(checkRateLimit).mockResolvedValue(false);
+    const res = await POST(req(validBody), { params });
+    expect(res.status).toBe(429);
+    expect(saveMessage).not.toHaveBeenCalled();
+  });
+
+  it('fails closed with 503 when the limiter itself errors', async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: 'user-1' } } as never);
+    vi.mocked(checkRateLimit).mockRejectedValue(new Error('db down'));
+    const res = await POST(req(validBody), { params });
+    expect(res.status).toBe(503);
+    expect(saveMessage).not.toHaveBeenCalled();
+  });
+
+  it('spends the write bucket, not the chat bucket', async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: 'user-1' } } as never);
+    vi.mocked(saveMessage).mockResolvedValue({ id: 'm-1' } as never);
+    await POST(req(validBody), { params });
+    expect(checkRateLimit).toHaveBeenCalledWith(
+      'user-1',
+      expect.objectContaining({ bucket: 'write' }),
+    );
   });
 });

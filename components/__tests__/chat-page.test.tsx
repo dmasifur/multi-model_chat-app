@@ -136,6 +136,62 @@ describe('ChatPage', () => {
     expect(sendMessage).not.toHaveBeenCalled();
   });
 
+  it('shows an error and does not fan out when creating the conversation fails', async () => {
+    const sendMessage = vi.fn();
+    vi.mocked(useChat).mockReturnValue({
+      messages: [],
+      sendMessage,
+      status: 'ready',
+      stop: vi.fn(),
+    } as never);
+
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(new Response('Too many requests', { status: 429 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<ChatPage allModels={models} />);
+    const input = screen.getByPlaceholderText(/type a message/i) as HTMLInputElement;
+    fireEvent.change(input, { target: { value: 'hello' } });
+    fireEvent.click(screen.getByRole('button', { name: /send/i }));
+
+    await vi.waitFor(() =>
+      expect(screen.getByText(/could not start a new conversation/i)).toBeTruthy(),
+    );
+    expect(sendMessage).not.toHaveBeenCalled();
+    expect(input.value).toBe('hello');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    vi.unstubAllGlobals();
+  });
+
+  it('shows an error and does not fan out when saving the user message fails', async () => {
+    const sendMessage = vi.fn();
+    vi.mocked(useChat).mockReturnValue({
+      messages: [],
+      sendMessage,
+      status: 'ready',
+      stop: vi.fn(),
+    } as never);
+
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ id: 'conv-1' }), { status: 201 }))
+      .mockResolvedValueOnce(new Response('Too many requests', { status: 429 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<ChatPage allModels={models} />);
+    const input = screen.getByPlaceholderText(/type a message/i) as HTMLInputElement;
+    fireEvent.change(input, { target: { value: 'hello' } });
+    fireEvent.click(screen.getByRole('button', { name: /send/i }));
+
+    await vi.waitFor(() => expect(screen.getByText(/could not save your message/i)).toBeTruthy());
+    expect(sendMessage).not.toHaveBeenCalled();
+    expect(input.value).toBe('hello');
+
+    vi.unstubAllGlobals();
+  });
+
   it('disables the submit button when no models are selected', () => {
     render(<ChatPage allModels={models} />);
 

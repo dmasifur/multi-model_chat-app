@@ -5,11 +5,25 @@ import { rateLimitState } from '@/lib/db/schema';
 export interface RateLimitOptions {
   windowMs: number;
   max: number;
+  bucket?: string;
 }
 
 export const DEFAULT_CHAT_RATE_LIMIT: RateLimitOptions = {
   windowMs: 60_000,
   max: 20,
+  bucket: 'chat',
+};
+
+/**
+ * Persistence writes are far cheaper than a completion, and one send fans out
+ * into several of them (one user message plus one per selected model), so this
+ * bucket has to clear the chat limit comfortably or it would deny writes for
+ * sends the chat limiter already allowed.
+ */
+export const DEFAULT_WRITE_RATE_LIMIT: RateLimitOptions = {
+  windowMs: 60_000,
+  max: 120,
+  bucket: 'write',
 };
 
 /**
@@ -20,16 +34,16 @@ export const DEFAULT_CHAT_RATE_LIMIT: RateLimitOptions = {
  */
 export async function checkRateLimit(
   userId: string,
-  { windowMs, max }: RateLimitOptions = DEFAULT_CHAT_RATE_LIMIT,
+  { windowMs, max, bucket = 'chat' }: RateLimitOptions = DEFAULT_CHAT_RATE_LIMIT,
 ): Promise<boolean> {
   const now = new Date();
   const windowStartCutoff = new Date(now.getTime() - windowMs);
 
   const [row] = await db
     .insert(rateLimitState)
-    .values({ userId, windowStart: now, count: 1 })
+    .values({ userId, bucket, windowStart: now, count: 1 })
     .onConflictDoUpdate({
-      target: rateLimitState.userId,
+      target: [rateLimitState.userId, rateLimitState.bucket],
       set: {
         windowStart: sql`case when ${rateLimitState.windowStart} < ${windowStartCutoff.toISOString()}::timestamp
           then ${now.toISOString()}::timestamp

@@ -15,7 +15,7 @@ const MAX_OUTPUT_TOKENS = 2048;
 
 export async function POST(req: Request) {
   const session = await auth();
-  if (!session?.user) {
+  if (!session?.user?.id) {
     return new Response('Unauthorized', { status: 401 });
   }
 

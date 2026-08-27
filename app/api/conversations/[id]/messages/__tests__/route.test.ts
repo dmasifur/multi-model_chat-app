@@ -85,7 +85,7 @@ describe('POST /api/conversations/[id]/messages', () => {
     vi.mocked(saveMessage).mockResolvedValue({ id: 'm1' } as never);
 
     const res = await POST(
-      req({ role: 'assistant', modelId: 'groq-llama-3.3-70b', content: 'Hi' }),
+      req({ role: 'assistant', modelId: 'groq-model', content: 'Hi' }),
       { params: Promise.resolve({ id: 'c1' }) },
     );
 
@@ -94,7 +94,7 @@ describe('POST /api/conversations/[id]/messages', () => {
       userId: 'user-1',
       conversationId: 'c1',
       role: 'assistant',
-      modelId: 'groq-llama-3.3-70b',
+      modelId: 'groq-model',
       content: 'Hi',
     });
   });

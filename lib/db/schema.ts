@@ -78,13 +78,21 @@ export const messages = pgTable(
   (table) => [index('message_conversationId_idx').on(table.conversationId)],
 );
 
-export const rateLimitState = pgTable('rate_limit_state', {
-  userId: text('userId')
-    .primaryKey()
-    .references(() => users.id, { onDelete: 'cascade' }),
-  windowStart: timestamp('windowStart', { mode: 'date' }).notNull(),
-  count: integer('count').notNull(),
-});
+export const rateLimitState = pgTable(
+  'rate_limit_state',
+  {
+    userId: text('userId')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    // One counter per (user, bucket) so an expensive bucket and a cheap one
+    // cannot drain each other: a single send spends one 'chat' request and
+    // several 'write' requests.
+    bucket: text('bucket').notNull().default('chat'),
+    windowStart: timestamp('windowStart', { mode: 'date' }).notNull(),
+    count: integer('count').notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.userId, table.bucket] })],
+);
 
 export const usageLog = pgTable(
   'usage_log',
